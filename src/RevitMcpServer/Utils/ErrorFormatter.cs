@@ -15,6 +15,6 @@ public static class ErrorFormatter
             _ => "Check that Revit is running and the MCP plugin is enabled."
         };
 
-        return $"Command '{command}' failed.\nError: {errorType} — {message}\nHint: {hint}";
+        return $"Command '{command}' failed.\nError: {errorType} - {message}\nHint: {hint}";
     }
 }
