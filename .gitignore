@@ -1,1 +1,12 @@
 .agents/*
+!.agents/
+!.agents/skills/
+.agents/skills/*
+!.agents/skills/run-revit-mcp/
+!.agents/skills/run-revit-mcp/**
+model/build/
+model/*.dll
+/.samples
+/.plans
+/docs
+/model
