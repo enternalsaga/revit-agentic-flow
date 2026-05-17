@@ -1,0 +1,34 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitMcpServer", "RevitMcpServer\RevitMcpServer.csproj", "{EC11181F-9DBD-425C-AE55-C2203F55829D}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitMcpSdk", "RevitMcpSdk\RevitMcpSdk.csproj", "{152B23AA-B8D6-4AC4-8310-763347D5688C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitMcpPlugin", "RevitMcpPlugin\RevitMcpPlugin.csproj", "{8361AD15-6C3B-42DC-A307-85D0720AE790}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EC11181F-9DBD-425C-AE55-C2203F55829D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC11181F-9DBD-425C-AE55-C2203F55829D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC11181F-9DBD-425C-AE55-C2203F55829D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC11181F-9DBD-425C-AE55-C2203F55829D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{152B23AA-B8D6-4AC4-8310-763347D5688C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{152B23AA-B8D6-4AC4-8310-763347D5688C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{152B23AA-B8D6-4AC4-8310-763347D5688C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{152B23AA-B8D6-4AC4-8310-763347D5688C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8361AD15-6C3B-42DC-A307-85D0720AE790}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8361AD15-6C3B-42DC-A307-85D0720AE790}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8361AD15-6C3B-42DC-A307-85D0720AE790}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8361AD15-6C3B-42DC-A307-85D0720AE790}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
