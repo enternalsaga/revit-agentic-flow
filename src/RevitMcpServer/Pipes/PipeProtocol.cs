@@ -22,14 +22,18 @@ public static class PipeProtocol
     {
         var lengthBuffer = new byte[4];
         var bytesRead = await ReadExactAsync(stream, lengthBuffer, 4, ct);
-        if (bytesRead < 4) return null;
+        if (bytesRead == 0) return null;
+        if (bytesRead < 4)
+            throw new InvalidDataException($"Incomplete pipe message length prefix: expected 4 bytes, read {bytesRead} bytes.");
 
         var messageLength = BitConverter.ToInt32(lengthBuffer, 0);
-        if (messageLength <= 0 || messageLength > MaxMessageLength) return null;
+        if (messageLength <= 0 || messageLength > MaxMessageLength)
+            throw new InvalidDataException($"Invalid pipe message length: {messageLength}.");
 
         var messageBuffer = new byte[messageLength];
         bytesRead = await ReadExactAsync(stream, messageBuffer, messageLength, ct);
-        if (bytesRead < messageLength) return null;
+        if (bytesRead < messageLength)
+            throw new InvalidDataException($"Incomplete pipe message payload: expected {messageLength} bytes, read {bytesRead} bytes.");
 
         return Encoding.UTF8.GetString(messageBuffer);
     }

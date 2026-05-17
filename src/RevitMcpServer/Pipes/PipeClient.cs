@@ -1,5 +1,6 @@
 using System.IO.Pipes;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RevitMcpSdk.Models;
 
 namespace RevitMcpServer.Pipes;
@@ -30,19 +31,32 @@ public class PipeClient : IDisposable
         };
 
         var requestJson = JsonConvert.SerializeObject(request);
-        await PipeProtocol.WriteMessageAsync(pipe, requestJson, ct);
-
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeoutCts.CancelAfter(_timeoutMs);
 
-        var responseJson = await PipeProtocol.ReadMessageAsync(pipe, timeoutCts.Token)
-            ?? throw new TimeoutException($"No response from Revit for command '{command}'");
+        try
+        {
+            await PipeProtocol.WriteMessageAsync(pipe, requestJson, timeoutCts.Token);
 
-        var errorResponse = JsonConvert.DeserializeObject<JsonRpcErrorResponse>(responseJson);
-        if (errorResponse?.Error?.Message != null && errorResponse.Error.Code != 0)
-            throw new Exception($"Revit error ({errorResponse.Error.Code}): {errorResponse.Error.Message}");
+            var responseJson = await PipeProtocol.ReadMessageAsync(pipe, timeoutCts.Token)
+                ?? throw new TimeoutException($"No response from Revit for command '{command}' within {_timeoutMs}ms");
 
-        return responseJson;
+            var response = JObject.Parse(responseJson);
+            if (response.TryGetValue("error", out var errorToken) && errorToken.Type != JTokenType.Null)
+            {
+                var error = errorToken.ToObject<JsonRpcError>();
+                var message = string.IsNullOrWhiteSpace(error?.Message)
+                    ? "Unknown Revit error"
+                    : error.Message;
+                throw new Exception($"Revit error ({error?.Code ?? 0}): {message}");
+            }
+
+            return responseJson;
+        }
+        catch (OperationCanceledException) when (timeoutCts.IsCancellationRequested && !ct.IsCancellationRequested)
+        {
+            throw new TimeoutException($"Timed out waiting for Revit command '{command}' after {_timeoutMs}ms");
+        }
     }
 
     public void Dispose() { }
