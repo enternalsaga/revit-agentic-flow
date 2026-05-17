@@ -15,6 +15,6 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0-windows'">
-    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.0.0" />
+    <PackageReference Include="Nice3point.Revit.Api.RevitAPI" Version="2025.0.2" />
   </ItemGroup>
 </Project>
