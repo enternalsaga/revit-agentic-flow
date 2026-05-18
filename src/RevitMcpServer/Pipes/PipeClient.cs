@@ -1,4 +1,5 @@
 using System.IO.Pipes;
+using System.Text.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RevitMcpSdk.Models;
@@ -24,9 +25,7 @@ public class PipeClient : IDisposable
         var request = new JsonRpcRequest
         {
             Method = command,
-            Params = parameters != null
-                ? Newtonsoft.Json.Linq.JToken.FromObject(parameters)
-                : null,
+            Params = ToJToken(parameters),
             Id = $"{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}{Random.Shared.Next(100000, 999999)}"
         };
 
@@ -60,4 +59,16 @@ public class PipeClient : IDisposable
     }
 
     public void Dispose() { }
+
+    private static JToken? ToJToken(object? parameters)
+    {
+        if (parameters is null)
+            return null;
+
+        if (parameters is JToken token)
+            return token;
+
+        var json = System.Text.Json.JsonSerializer.Serialize(parameters);
+        return JToken.Parse(json);
+    }
 }
