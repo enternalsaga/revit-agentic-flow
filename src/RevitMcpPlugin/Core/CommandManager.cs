@@ -1,6 +1,7 @@
 using System.IO;
 using System.Reflection;
 using Autodesk.Revit.UI;
+using Newtonsoft.Json.Linq;
 using RevitMcpSdk;
 
 namespace RevitMcpPlugin.Core;
@@ -61,13 +62,13 @@ public class CommandManager
     private void LoadCommandFromAssembly(string commandName, string assemblyPath)
     {
         var assembly = Assembly.LoadFrom(assemblyPath);
-        foreach (var type in assembly.GetTypes())
+        foreach (var type in GetLoadableTypes(assembly))
         {
-            if (!typeof(IRevitCommand).IsAssignableFrom(type) || type.IsInterface || type.IsAbstract)
+            if (type == null || type.IsInterface || type.IsAbstract)
                 continue;
 
             var command = CreateCommand(type);
-            if (command.CommandName.Equals(commandName, StringComparison.OrdinalIgnoreCase))
+            if (command != null && command.CommandName.Equals(commandName, StringComparison.OrdinalIgnoreCase))
             {
                 _registry.RegisterCommand(command);
                 return;
@@ -75,19 +76,32 @@ public class CommandManager
         }
     }
 
-    private IRevitCommand CreateCommand(Type type)
+    private IRevitCommand? CreateCommand(Type type)
     {
-        if (typeof(IRevitCommandInitializable).IsAssignableFrom(type))
+        if (typeof(IRevitCommand).IsAssignableFrom(type))
         {
-            var command = (IRevitCommand)Activator.CreateInstance(type)!;
-            ((IRevitCommandInitializable)command).Initialize(_uiApplication);
-            return command;
+            if (typeof(IRevitCommandInitializable).IsAssignableFrom(type))
+            {
+                var command = (IRevitCommand)Activator.CreateInstance(type)!;
+                ((IRevitCommandInitializable)command).Initialize(_uiApplication);
+                return command;
+            }
+
+            var constructor = type.GetConstructor(new[] { typeof(UIApplication) });
+            return constructor != null
+                ? (IRevitCommand)constructor.Invoke(new object[] { _uiApplication })
+                : (IRevitCommand)Activator.CreateInstance(type)!;
         }
 
-        var constructor = type.GetConstructor(new[] { typeof(UIApplication) });
-        return constructor != null
-            ? (IRevitCommand)constructor.Invoke(new object[] { _uiApplication })
-            : (IRevitCommand)Activator.CreateInstance(type)!;
+        if (!ImplementsLegacyCommand(type))
+            return null;
+
+        var legacyConstructor = type.GetConstructor(new[] { typeof(UIApplication) });
+        var legacyCommand = legacyConstructor != null
+            ? legacyConstructor.Invoke(new object[] { _uiApplication })
+            : Activator.CreateInstance(type);
+
+        return legacyCommand == null ? null : new LegacyRevitCommandAdapter(legacyCommand);
     }
 
     private static string ResolveAssemblyPath(string assemblyPath)
@@ -104,4 +118,38 @@ public class CommandManager
 
     private static bool GetBool(object source, string propertyName, bool defaultValue)
         => source.GetType().GetProperty(propertyName)?.GetValue(source) as bool? ?? defaultValue;
+
+    private static IEnumerable<Type?> GetLoadableTypes(Assembly assembly)
+    {
+        try
+        {
+            return assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            return ex.Types.Where(type => type != null);
+        }
+    }
+
+    private static bool ImplementsLegacyCommand(Type type)
+        => type.GetInterfaces().Any(i => i.FullName == "RevitMCPSDK.API.Interfaces.IRevitCommand");
+
+    private sealed class LegacyRevitCommandAdapter : IRevitCommand
+    {
+        private readonly object _inner;
+        private readonly MethodInfo _executeMethod;
+
+        public LegacyRevitCommandAdapter(object inner)
+        {
+            _inner = inner;
+            _executeMethod = inner.GetType().GetMethod("Execute", new[] { typeof(JObject), typeof(string) })
+                ?? throw new InvalidOperationException($"Legacy command '{inner.GetType().FullName}' does not expose Execute(JObject, string).");
+        }
+
+        public string CommandName
+            => _inner.GetType().GetProperty("CommandName")?.GetValue(_inner)?.ToString() ?? "";
+
+        public object Execute(JObject parameters, string requestId)
+            => _executeMethod.Invoke(_inner, new object[] { parameters, requestId })!;
+    }
 }
