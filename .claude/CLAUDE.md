@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MCP (Model Context Protocol) server for Autodesk Revit. It enables AI assistants to read, create, modify, and delete elements in Revit projects.
 
-The repository now has a Phase 1 C# MCP server alongside the original TypeScript/WebSocket implementation. Prefer the C# Phase 1 path for Revit 2025 work unless a task explicitly targets the legacy server.
+The repository now has a Phase 1 C# MCP server alongside the original TypeScript/WebSocket implementation. Prefer the C# Phase 1 path for Revit 2024 and Revit 2025 work unless a task explicitly targets the legacy server.
 
 ## Phase 1 C# Architecture
 
@@ -18,7 +18,7 @@ AI Client <--stdio--> RevitMcpServer (C# MCP) <--named pipe: revit-mcp--> RevitM
 
 - **`src/RevitMcpServer/`** - .NET 8 stdio MCP server. Tool wrappers live in `Tools/` and forward JSON-RPC requests through `Pipes/PipeClient`.
 - **`src/RevitMcpSdk/`** - shared SDK contracts and JSON-RPC models used by the server and plugin.
-- **`src/RevitMcpPlugin/`** - Revit 2025 add-in. It starts a named pipe service, dispatches requests through `CommandExecutor`, and loads command assemblies via `CommandManager`.
+- **`src/RevitMcpPlugin/`** - Revit add-in for 2024 (`net48`) and 2025 (`net8.0-windows`). It starts a named pipe service, dispatches requests through `CommandExecutor`, and loads command assemblies via `CommandManager`.
 - **`mcp-servers-for-revit/commandset/`** - existing Revit command implementations. Phase 1 loads the legacy `RevitMCPSDK` commandset through a reflection adapter.
 - **`mcp-servers-for-revit/command.json`** - command manifest used by the plugin configuration sync.
 
@@ -42,26 +42,21 @@ Publish the self-contained MCP server:
 dotnet publish src/RevitMcpServer/RevitMcpServer.csproj -c Release -r win-x64 --self-contained
 ```
 
-Build the Revit 2025 commandset:
+Build the Revit 2024 or 2025 commandset:
 
 ```powershell
+dotnet build "mcp-servers-for-revit/commandset/RevitMCPCommandSet.csproj" -c "Release R24"
 dotnet build "mcp-servers-for-revit/commandset/RevitMCPCommandSet.csproj" -c "Release R25"
 ```
 
-Deploy Phase 1 plugin layout for Revit 2025:
+Deploy Phase 1 plugin layout for Revit 2024 or 2025:
 
 ```powershell
-$addins = Join-Path $env:APPDATA "Autodesk\Revit\Addins\2025"
-$target = Join-Path $addins "revit-mcp-v2"
-$commandTarget = Join-Path $target "Commands\RevitMCPCommandSet\2025"
-New-Item -ItemType Directory -Path $target -Force
-New-Item -ItemType Directory -Path $commandTarget -Force
-Copy-Item "src\RevitMcpPlugin\bin\Release\net8.0-windows\*" -Destination $target -Recurse -Force
-Copy-Item "mcp-servers-for-revit\commandset\bin\Release R25\*" -Destination $commandTarget -Recurse -Force
-Copy-Item "mcp-servers-for-revit\command.json" -Destination "$target\Commands\RevitMCPCommandSet\command.json" -Force
+.\scripts\deploy-phase1.ps1 -RevitVersion 2024
+.\scripts\deploy-phase1.ps1 -RevitVersion 2025
 ```
 
-The `.addin` file must point to the deployed `RevitMcpPlugin.dll`. An absolute assembly path is the least ambiguous option when the add-in file lives directly under `%APPDATA%\Autodesk\Revit\Addins\2025`.
+The deploy script writes a version-specific `.addin` file with an absolute assembly path under `%APPDATA%\Autodesk\Revit\Addins\<version>`.
 
 Claude Desktop MCP config example:
 
@@ -105,7 +100,7 @@ C# solution build:
 dotnet build src/RevitMcpServer.sln -c Release
 ```
 
-Live Revit integration testing requires Revit 2025 open with the Phase 1 plugin loaded:
+Live Revit integration testing requires Revit 2024 or 2025 open with the Phase 1 plugin loaded:
 
 ```powershell
 npx @anthropic-ai/mcp-inspector src\RevitMcpServer\bin\Release\net8.0-windows\win-x64\publish\RevitMcpServer.exe

@@ -58,8 +58,11 @@ public class ConfigurationManager
 
             foreach (var commandObject in commands)
             {
-                var commandName = commandObject["commandName"]?.ToString();
-                if (string.IsNullOrWhiteSpace(commandName) || existing.ContainsKey(commandName))
+                string commandName = commandObject["commandName"]?.ToString() ?? "";
+                if (string.IsNullOrWhiteSpace(commandName))
+                    continue;
+
+                if (existing.ContainsKey(commandName))
                     continue;
 
                 var assemblyPath = commandObject["assemblyPath"]?.ToString() ?? "";

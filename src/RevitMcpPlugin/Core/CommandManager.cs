@@ -11,12 +11,14 @@ public class CommandManager
     private readonly ICommandRegistry _registry;
     private readonly object? _configurationManager;
     private readonly UIApplication _uiApplication;
+    private readonly string _revitVersion;
 
-    public CommandManager(ICommandRegistry registry, object? configurationManager, UIApplication uiApplication)
+    public CommandManager(ICommandRegistry registry, object? configurationManager, UIApplication uiApplication, string revitVersion)
     {
         _registry = registry;
         _configurationManager = configurationManager;
         _uiApplication = uiApplication;
+        _revitVersion = revitVersion;
     }
 
     public void LoadCommands()
@@ -104,12 +106,12 @@ public class CommandManager
         return legacyCommand == null ? null : new LegacyRevitCommandAdapter(legacyCommand);
     }
 
-    private static string ResolveAssemblyPath(string assemblyPath)
+    private string ResolveAssemblyPath(string assemblyPath)
     {
         if (Path.IsPathRooted(assemblyPath))
             return assemblyPath;
 
-        var version = assemblyPath.Replace("{VERSION}", "2025", StringComparison.OrdinalIgnoreCase);
+        var version = assemblyPath.Replace("{VERSION}", _revitVersion);
         return Path.Combine(AppContext.BaseDirectory, "Commands", version);
     }
 

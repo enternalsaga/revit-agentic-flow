@@ -46,7 +46,7 @@ public class App : IExternalApplication
         var configManager = new ConfigurationManager();
         configManager.LoadConfiguration();
 
-        var commandManager = new CommandManager(registry, configManager, uiApp);
+        var commandManager = new CommandManager(registry, configManager, uiApp, uiApp.Application.VersionNumber);
         commandManager.LoadCommands();
     }
 }
