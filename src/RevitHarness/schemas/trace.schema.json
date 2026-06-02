@@ -15,7 +15,36 @@
     "snapshots": { "type": "array" },
     "modelStatistics": { "type": ["object", "null"] },
     "warnings": { "type": ["object", "null"] },
-    "classifiedFailures": { "type": "array" },
+    "classifiedFailures": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "confidence", "evidence", "suggestedNextAction", "patchTargets"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "stale_session",
+              "schema_mismatch",
+              "json_quoting",
+              "missing_family",
+              "invalid_geometry",
+              "view_missing",
+              "command_not_registered",
+              "transport_unavailable",
+              "command_bug",
+              "skill_gap",
+              "verification_gap",
+              "unknown"
+            ]
+          },
+          "confidence": { "type": "number" },
+          "evidence": { "type": "array", "items": { "type": "string" } },
+          "suggestedNextAction": { "type": "string" },
+          "patchTargets": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
     "lessonCandidates": { "type": "array" },
     "finalStatus": { "type": "string" }
   }

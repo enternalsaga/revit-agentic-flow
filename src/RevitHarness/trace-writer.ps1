@@ -1,9 +1,10 @@
 param(
-    [ValidateSet("new", "append-command", "finalize")][string]$Mode = "new",
+    [ValidateSet("new", "append-command", "append-classification", "finalize")][string]$Mode = "new",
     [string]$RunId = "",
     [string]$TaskLabel = "revit-task",
     [string]$UserIntent = "",
     [string]$CommandResultPath = "",
+    [string]$ClassificationPath = "",
     [string]$FinalStatus = "in_progress"
 )
 
@@ -62,6 +63,19 @@ if ($Mode -eq "append-command") {
     $commands = @($trace.commands)
     $commands += $commandResult
     $trace.commands = $commands
+}
+
+if ($Mode -eq "append-classification") {
+    if (-not (Test-Path $ClassificationPath)) {
+        throw "Classification file not found: $ClassificationPath"
+    }
+    $classification = Get-Content -Path $ClassificationPath -Raw | ConvertFrom-Json
+    if ([string]::IsNullOrWhiteSpace($classification.category)) {
+        throw "Classification category is required."
+    }
+    $classifiedFailures = @($trace.classifiedFailures)
+    $classifiedFailures += $classification
+    $trace.classifiedFailures = $classifiedFailures
 }
 
 if ($Mode -eq "finalize") {

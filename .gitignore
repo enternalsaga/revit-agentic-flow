@@ -18,6 +18,7 @@ model/*.dll
 .revit-harness/runs/
 .revit-harness/cache/
 .revit-harness/lesson-candidates/
+.revit-harness/lesson-candidates-test/
 .revit-harness/command-gaps/
 .revit-harness/command-proposals/
 .revit-harness/command-scaffolds/

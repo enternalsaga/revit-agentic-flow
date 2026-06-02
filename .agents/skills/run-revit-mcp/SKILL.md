@@ -16,7 +16,7 @@ The workflow has 4 phases: **Diagnose → Plan → Execute → Verify & Report**
 **`send_code_to_revit` is the LAST RESORT, not the default.** A past failure mode is the AI assuming dedicated tools don't exist and falling back to `send_code_to_revit` for everything. This defeats the purpose of the MCP server.
 
 Before using `send_code_to_revit` for ANY operation, you MUST:
-1. Check the tool reference table below
+1. Load `.agents/skills/run-revit-mcp/references/tool-reference.md` and map the task to a dedicated tool first
 2. If you think a tool doesn't exist, **call it anyway** — tool availability is determined by the MCP server at runtime, not by your assumptions
 3. Only use `send_code_to_revit` after a dedicated tool genuinely does not exist or has failed with an error that proves it cannot handle the specific operation
 
@@ -63,7 +63,7 @@ Use the bootstrap report as runtime truth:
 - If direct MCP tools are visible, prefer them.
 - If direct MCP discovery is stale but JSON-RPC is available, use `src/RevitHarness/invoke-command.ps1`.
 - If no transport is available, stop and report that Revit/plugin is not connected.
-- If a command fails, save or update a trace and classify the failure when the classifier exists.
+- If a command fails, save or update a trace, classify the failure, and append the classification with `src/RevitHarness/trace-writer.ps1 -Mode append-classification`.
 
 ### Reference Loading
 
@@ -82,7 +82,7 @@ Load references only when needed:
 ToolSearch({ query: "select:mcp__mcp-server-for-revit__create_level,mcp__mcp-server-for-revit__create_grid,..." })
 ```
 
-If `ToolSearch` returns "No matching deferred tools found" for a tool name, that tool does **not exist** in the current session. Check the "Not Yet Implemented" table and use the documented workaround. Do NOT plan around tools that failed `ToolSearch`.
+If `ToolSearch` returns "No matching deferred tools found" for a tool name, that tool does **not exist** in the current session. Load `.agents/skills/run-revit-mcp/references/tool-reference.md` and `.agents/skills/run-revit-mcp/references/fallbacks.md` before choosing a workaround. Do NOT plan around tools that failed `ToolSearch`.
 
 ### MANDATORY: Discover available tools first
 
@@ -107,63 +107,7 @@ Use this socket bridge only as a transport fallback when callable MCP tool names
 
 ### Tool Reference
 
-Tools are split into **Confirmed** (verified in MCP server's `ToolSearch` deferred list) and **Not Yet Implemented** (listed in earlier skill versions but missing from the runtime). Always run `ToolSearch` at session start to confirm availability — tools may be added between sessions.
-
-#### Full Tool Reference (68+ tools — all have TS + C# implementations)
-
-All tools below exist in the codebase. If `ToolSearch` doesn't find some, it's a stale session (see Pitfall #1). Use JSON-RPC bridge as fallback.
-
-**Element Creation:**
-
-| Task | MCP Tool | Notes |
-|------|----------|-------|
-| Levels | `create_level` | Array of {name, elevation} |
-| Grid lines (uniform) | `create_grid` | Regular spacing with X/Y count |
-| Grid lines (custom) | `create_custom_grid` | Irregular positions via named arrays |
-| Walls | `create_line_based_element` | category: `OST_Walls` |
-| Beams/framing | `create_line_based_element` | category: `OST_StructuralFraming` |
-| Floors | `create_surface_based_element` | category: `OST_Floors` |
-| Flat roofs | `create_surface_based_element` | category: `OST_Roofs` — **flat only, ignores Z** |
-| **Pitched roofs** | **`create_sloped_roof`** | Footprint + per-edge slope. Use this, not surface_based for slopes |
-| **Structural columns** | **`create_structural_column`** | Position + base/top level elevations |
-| **Braces** | **`create_brace`** | Start/end 3D points + level |
-| **Curtain walls** | **`create_curtain_wall`** | Start/end + height, for glass facades |
-| **Parametric doors** | **`create_parametric_door`** | Width×Height on host wall |
-| Doors/windows (generic) | `create_point_based_element` | With typeId + hostWallId |
-| Furniture/equipment | `create_point_based_element` | Any point-based family |
-| Framing system | `create_structural_framing_system` | Auto beam layout in rectangle |
-| Rooms | `create_room` | |
-| Dimensions | `create_dimensions` | |
-
-**Element Modification:**
-
-| Task | MCP Tool | Notes |
-|------|----------|-------|
-| Delete | `delete_element` | By ElementId array |
-| Operate | `operate_element` | Hide/Isolate/Select/Move/Copy/Mirror/Rotate/SetColor |
-| **Edit wall profile** | **`edit_wall_profile`** | Custom wall shape via profile points |
-| **Set parameter** | **`set_element_parameter`** | Single element, any parameter |
-| **Bulk set parameter** | **`set_parameter_bulk`** | Multiple elements, same parameter |
-| **Filter & set** | `filter_and_set_parameter` | Find by criteria then set |
-| **Copy parameters** | `copy_parameters` | Source → targets |
-| **Change materials** | **`batch_change_materials`** | Search/replace material across model |
-| Color elements | `color_elements` | By parameter value |
-
-**Query & Verification:**
-
-| Task | MCP Tool | Notes |
-|------|----------|-------|
-| Family types | `get_available_family_types` | Filter by category/family |
-| Current view info | `get_current_view_info` | |
-| **Switch view** | **`switch_view`** | By name/ID/default {3D}. No transaction. |
-| **Snapshot model** | **`snapshot_workspace`** | Image + visible elements + selection |
-| Model statistics | `analyze_model_statistics` | Counts by category/type/level |
-| Query elements | `ai_element_filter` | Intelligent element query |
-| **Verify elements** | **`verify_elements`** | Check if elements still exist |
-| Tag rooms / walls | `tag_all_rooms` / `tag_all_walls` | |
-| Send C# code | `send_code_to_revit` | **Last resort** — see policy above |
-
-**Bold** = tools that were previously missing from ToolSearch due to stale sessions. They are fully implemented.
+Use `.agents/skills/run-revit-mcp/references/tool-reference.md` when mapping tasks to dedicated tools. Keep the detailed creation, modification, query, and verification tool tables there so this skill remains an orchestration workflow.
 
 
 #### Tools Missing from ToolSearch (Stale Session Issue)

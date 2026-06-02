@@ -13,6 +13,9 @@ Get-ChildItem -Path $TraceDirectory -Filter "*.json" -File | ForEach-Object {
     $failures = $trace.classifiedFailures
     if (-not $failures) { return }
     foreach ($failure in $failures) {
+        if ([string]::IsNullOrWhiteSpace($failure.category)) {
+            continue
+        }
         if (-not $groups.ContainsKey($failure.category)) {
             $groups[$failure.category] = @()
         }
