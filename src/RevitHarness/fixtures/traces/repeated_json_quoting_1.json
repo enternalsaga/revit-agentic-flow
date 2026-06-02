@@ -1,0 +1,17 @@
+{
+  "traceVersion": "1.0",
+  "runId": "repeated_json_quoting_1",
+  "timestampUtc": "2026-06-02T00:00:00Z",
+  "workspaceRoot": "fixture",
+  "commands": [],
+  "classifiedFailures": [
+    {
+      "category": "json_quoting",
+      "confidence": 0.95,
+      "evidence": ["Input contains PowerShell JSON parsing failure."],
+      "suggestedNextAction": "Pass params through invoke-command.ps1 using JSON file or canonical JSON.",
+      "patchTargets": ["src/RevitHarness/invoke-command.ps1"]
+    }
+  ],
+  "finalStatus": "failed"
+}
