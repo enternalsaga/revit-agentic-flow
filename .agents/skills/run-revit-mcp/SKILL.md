@@ -50,6 +50,30 @@ Read the user's request carefully and break it into atomic modeling tasks.
 
 For each task from Phase 1, assign the MCP tool to use.
 
+### Harness Bootstrap
+
+Before executing or planning fallback calls, run:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache
+```
+
+Use the bootstrap report as runtime truth:
+
+- If direct MCP tools are visible, prefer them.
+- If direct MCP discovery is stale but JSON-RPC is available, use `src/RevitHarness/invoke-command.ps1`.
+- If no transport is available, stop and report that Revit/plugin is not connected.
+- If a command fails, save or update a trace and classify the failure when the classifier exists.
+
+### Reference Loading
+
+Load references only when needed:
+
+- `references/tool-reference.md` when mapping tasks to tools.
+- `references/fallbacks.md` when a dedicated tool is unavailable or fails.
+- `references/failure-taxonomy.md` when classifying an error.
+- `references/verification-checklist.md` before final reporting.
+
 ### MANDATORY: Load tool schemas first
 
 **Step 0 (before anything else):** MCP tools are *deferred* — their schemas are not loaded until you fetch them. Before calling any `mcp__mcp-server-for-revit__*` tool, run `ToolSearch` to load its schema:
@@ -150,28 +174,9 @@ All tools below exist in the codebase. If `ToolSearch` doesn't find some, it's a
 
 **Resolution priority:**
 
-1. **JSON-RPC bridge (same session):** Call any registered Revit command directly without needing ToolSearch:
-   ```powershell
-   powershell -NoProfile -ExecutionPolicy Bypass -File .\.agents\skills\run-revit-mcp\scripts\Invoke-RevitMcpJsonRpc.ps1 `
-     -Method <command_name> -ParamsJson '<json>'
-   ```
+1. **JSON-RPC bridge (same session):** For JSON-RPC fallback and compiled helper flow, use `references/fallbacks.md`. Do not hand-write shell-quoted JSON when `src/RevitHarness/invoke-command.ps1` is available.
 2. **Restart MCP client:** Tell the user to restart Claude Code to pick up the latest build. All tools will then appear in ToolSearch.
 3. **`send_code_to_revit` workaround (last resort):** Only when both MCP tool and JSON-RPC bridge fail.
-
-**Common tools that may appear missing in stale sessions:**
-
-| Tool | JSON-RPC fallback params |
-|------|--------------------------|
-| `create_sloped_roof` | `{"data":[{"name":"...","boundary":[{"p0":{},"p1":{},"slope":10}],...}]}` |
-| `create_structural_column` | `{"data":[{"locationPoint":{},"baseLevelElevation":0,"topLevelElevation":8000,...}]}` |
-| `create_custom_grid` | `{"xGrids":[{"name":"C","position":40000}],"yGrids":[...]}` |
-| `create_brace` | `{"data":[{"startPoint":{},"endPoint":{},"baseLevelElevation":0,...}]}` |
-| `create_curtain_wall` | `{"data":[{"startPoint":{},"endPoint":{},"height":5000,...}]}` |
-| `create_parametric_door` | `{"width":3000,"height":3500,"hostWallId":12345}` |
-| `snapshot_workspace` | `{"includeImage":true,"includeVisibleElements":true,"pixelSize":1600}` |
-| `switch_view` | `{"viewName":"{3D}"}` or `{"viewId":94488}` |
-| `edit_wall_profile` | `{"wallId":12345,"profilePoints":[{"x":0,"y":0,"z":0},...]}`|
-| `verify_elements` | `{"elementIds":[313199,313200,...]}` |
 
 ### Known Pitfalls
 
@@ -196,43 +201,7 @@ When you must use it, document the reason: `"(Tool: send_code_to_revit — Reaso
 
 ### Large custom geometry through `send_code_to_revit`
 
-The Revit plugin socket reads messages with an ~8KB buffer. Long inline C# snippets can fail before compilation with `Invalid JSON`. For complex custom geometry:
-
-Prefer the bundled helper script instead of hand-writing socket clients or compile commands:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\.agents\skills\run-revit-mcp\scripts\Invoke-RevitMcpJsonRpc.ps1 `
-  -SourcePath .\model\MyModel.cs `
-  -TypeName MyNamespace.MyModel `
-  -MethodName Execute
-```
-
-The target method should usually be `public static object Execute(Autodesk.Revit.DB.Document document)`. The script:
-- calls Revit's TCP JSON-RPC bridge on `localhost:8080`
-- compiles the helper against the active Revit API DLLs
-- writes a versioned DLL filename so Revit assembly locking does not block rebuilds
-- sends a short `send_code_to_revit` bootstrap that loads the DLL and invokes the target method
-- unwraps `TargetInvocationException` so the result includes the real `InnerException` message, type, and stack
-
-Useful script examples:
-
-```powershell
-# Check bridge connectivity
-powershell -NoProfile -ExecutionPolicy Bypass -File .\.agents\skills\run-revit-mcp\scripts\Invoke-RevitMcpJsonRpc.ps1 -Method get_project_info
-
-# Call any JSON-RPC command
-powershell -NoProfile -ExecutionPolicy Bypass -File .\.agents\skills\run-revit-mcp\scripts\Invoke-RevitMcpJsonRpc.ps1 `
-  -Method snapshot_workspace `
-  -ParamsJson '{"includeImage":true,"includeVisibleElements":true,"pixelSize":1600}'
-
-# Compile only, without running in Revit
-powershell -NoProfile -ExecutionPolicy Bypass -File .\.agents\skills\run-revit-mcp\scripts\Invoke-RevitMcpJsonRpc.ps1 `
-  -SourcePath .\model\MyModel.cs `
-  -TypeName MyNamespace.MyModel `
-  -CompileOnly
-```
-
-This fallback is appropriate for massing or visualization geometry that dedicated tools cannot express cleanly, such as nonstandard DirectShape solids, custom ridge vents, or compound canopy/freeform panels. Tell the user when output is DirectShape visualization instead of native BIM-hosted walls/roofs/doors.
+For compiled helper DLL flow and JSON-RPC invocation patterns, use `references/fallbacks.md`. The reference covers the helper script with `-SourcePath`, `-TypeName`, and `-MethodName` parameters, and how to avoid nested transactions.
 
 ### Present the plan
 
