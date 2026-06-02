@@ -12,3 +12,8 @@ model/*.dll
 /model
 /.claude/skills/revit-api-reference/data
 /.claude
+
+# Revit harness runtime output
+.revit-harness/runs/
+.revit-harness/cache/
+.revit-harness/lesson-candidates/
