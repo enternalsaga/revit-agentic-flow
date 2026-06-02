@@ -9,17 +9,41 @@ Tài liệu này hướng dẫn cách thiết lập và sử dụng bộ công c
 ### Yêu cầu hệ thống
 - **Autodesk Revit** (Hỗ trợ bản 2023, 2024, 2025, 2026 - ưu tiên 2024 theo thiết lập mặc định).
 - **Node.js 18+** (Để chạy phần MCP Server bằng TypeScript).
+- **.NET 8.0 SDK** (Yêu cầu cài đặt để có thể biên dịch mã nguồn C# của Plugin).
+  - *Cách 1 (Nếu có quyền Admin)*: Tải và cài đặt file `.exe` từ [trang chủ Microsoft](https://dotnet.microsoft.com/download/dotnet/8.0).
+  - *Cách 2 (Nếu KHÔNG có quyền Admin)*: Mở PowerShell và chạy lần lượt các lệnh sau để cài đặt cục bộ vào thư mục User Profile:
+    ```powershell
+    Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.ps1" -OutFile "dotnet-install.ps1"
+    .\dotnet-install.ps1 -Channel 8.0 -InstallDir "$env:USERPROFILE\.dotnet"
+    Remove-Item -Path .\dotnet-install.ps1 -Force
+    ```
+    Sau đó, khi chạy build/install, cần đưa đường dẫn trên vào môi trường hiện tại bằng lệnh:
+    ```powershell
+    $env:Path = "$env:USERPROFILE\.dotnet;" + $env:Path
+    ```
 
 ### Các bước cài đặt Plugin vào Revit
-Dự án đã cung cấp sẵn một file script (`install.bat`) để tự động hóa quá trình cài đặt.
+Dự án cung cấp sẵn hai file script tự động hóa:
+- `build_and_install.bat`: Tự động biên dịch (build) mã nguồn C# và gọi script cài đặt (Khuyên dùng cho lần cài đặt đầu tiên hoặc sau khi sửa code C#).
+- `install.bat`: Chỉ copy các file đã được biên dịch sẵn vào thư mục Addins của Revit.
+
+**Cách thực hiện:**
 
 1. Đảm bảo rằng bạn đã **đóng toàn bộ phiên làm việc của phần mềm Revit**.
-2. Mở thư mục gốc của dự án `MCP_Revit` (thư mục chứa file `install.bat`).
-3. Nhấp đúp (hoặc chạy qua Terminal) file `install.bat`.
-4. Script sẽ hỏi phiên bản Revit bạn muốn cài (mặc định là `2024`). Nhập phiên bản tương ứng và nhấn Enter.
-5. Script sẽ tự động copy file `.addin` và thư mục `revit_mcp_plugin` (bao gồm các file DLL) vào thư mục `%AppData%\Autodesk\Revit\Addins\<Phiên_bản>\` của bạn và Unblock các file DLL.
+2. Mở thư mục gốc của dự án `MCP_Revit`.
+3. Chạy file `build_and_install.bat` bằng cách nhấp đúp hoặc chạy qua Terminal:
+   ```powershell
+   # Dành cho người dùng có quyền Admin (hoặc đã cài .NET SDK hệ thống)
+   .\build_and_install.bat
 
-*(Lưu ý: Nếu bạn chạy `install.bat` với quyền Administrator, plugin sẽ được cài cho toàn bộ người dùng trên máy tính tại thư mục `%ProgramData%` thay vì `%AppData%`).*
+   # Dành cho người dùng KHÔNG có quyền Admin (đã cài đặt .NET SDK cục bộ)
+   $env:Path = "$env:USERPROFILE\.dotnet;" + $env:Path
+   .\build_and_install.bat
+   ```
+4. Script sẽ hỏi phiên bản Revit bạn muốn cài (mặc định là `2024`). Nhập phiên bản tương ứng và nhấn Enter.
+5. Script sẽ tự động chạy lệnh `dotnet build` để biên dịch project, sau đó gọi `install.bat` để copy file `.addin` và thư mục `revit_mcp_plugin` (bao gồm các file DLL) vào thư mục `%AppData%\Autodesk\Revit\Addins\<Phiên_bản>\` của bạn và Unblock các file DLL.
+
+*(Lưu ý: Nếu bạn chạy script với quyền Administrator, plugin sẽ được cài cho toàn bộ người dùng trên máy tính tại thư mục `%ProgramData%` thay vì `%AppData%`).*
 
 ### Thiết lập MCP Server cho AI (Claude Desktop / Cursor / Claude Code)
 
@@ -78,10 +102,11 @@ Nếu phần định nghĩa công cụ (trong thư mục `server/`) có sự tha
 
 ### Cập nhật Plugin Revit (Phần C# DLL)
 Nếu mã nguồn C# (trong `plugin/` hoặc `commandset/`) được cập nhật:
-1. Mở file `mcp-servers-for-revit.sln` bằng Visual Studio. Chọn đúng cấu hình Build (Configuration) cho phiên bản Revit bạn đang dùng (ví dụ: `Debug R24` cho Revit 2024) và tiến hành Build solution (F6).
-2. **Tắt hẳn Revit** (điều này bắt buộc vì nếu Revit đang mở, các file DLL sẽ bị khóa và không thể chép đè).
-3. Chạy lại file `install.bat` ở thư mục gốc của dự án. Script sẽ thực hiện việc ghi đè các file DLL mới vào thư mục Addins của Revit.
-4. Mở lại Revit. Plugin mới nhất đã được áp dụng.
+1. **Tắt hẳn Revit** (điều này bắt buộc vì nếu Revit đang mở, các file DLL sẽ bị khóa và không thể chép đè).
+2. Bạn có hai cách để build và cài đặt lại plugin:
+   - **Cách 1 (Nhanh nhất):** Chạy script `build_and_install.bat` ở thư mục gốc của dự án. Script này sẽ tự động chạy lệnh `dotnet build` để biên dịch rồi copy file vào thư mục Addins của Revit.
+   - **Cách 2 (Visual Studio):** Mở file `mcp-servers-for-revit.sln` bằng Visual Studio. Chọn đúng cấu hình Build (Configuration) cho phiên bản Revit bạn đang dùng (ví dụ: `Debug R24` cho Revit 2024), tiến hành Build solution (F6), sau đó chạy `install.bat` để copy file.
+3. Mở lại Revit. Plugin mới nhất đã được áp dụng.
 
 ---
 

@@ -10,3 +10,5 @@ model/*.dll
 /.plans
 /docs
 /model
+/.claude/skills/revit-api-reference/data
+/.claude
