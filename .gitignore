@@ -15,6 +15,7 @@ model/*.dll
 .env
 
 # Revit harness runtime output
+src/RevitHarness/evals/results/
 .revit-harness/runs/
 .revit-harness/cache/
 .revit-harness/lesson-candidates/
