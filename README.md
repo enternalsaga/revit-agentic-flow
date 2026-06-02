@@ -214,7 +214,23 @@ Proposal chứa: tên command, input/output schema, file cần tạo, eval plan.
 ```
  
 > ⚠️ Harness **không bao giờ** tự build, deploy, restart Revit, hay commit code. Mọi thay đổi source đều cần bạn review và duyệt.
- 
+
 ---
- 
+
+## 5. Quy Trình Tự Động Hóa Với Trợ Lý AI (Agentic Workflows & Skills)
+
+Để giúp bạn tối ưu hóa hiệu suất làm việc, dự án tích hợp sẵn bộ quy trình và kỹ năng tự động hóa chuyên biệt dành cho các trợ lý AI (như Claude Code, Cursor, Cline) khi tương tác với Revit.
+
+### 🧭 Các Lệnh Điều Phối Nhanh (Workflows)
+Khi giao tiếp với AI trong cửa sổ chat, bạn có thể sử dụng các lệnh sau để yêu cầu AI tự động thực hiện các tác vụ phức tạp:
+* **`/start`**: Yêu cầu AI khởi động phiên làm việc. AI sẽ tự động chạy kiểm tra kết nối với Revit (Named Pipe / JSON-RPC) và nạp tri thức/quy tắc thiết kế của dự án.
+* **`/harness`**: Yêu cầu AI tự động chạy các công cụ chẩn đoán sức khỏe hệ thống, kiểm tra lỗi và tự động phát hiện các câu lệnh Revit còn thiếu.
+
+### 🛠️ Bộ Kỹ Năng Định Hướng Hành Vi (Skills)
+Trợ lý AI sẽ tự động nhận diện và áp dụng các kỹ năng chuyên sâu được lưu trữ tại thư mục `.agents/skills/` để hỗ trợ bạn:
+* **Dựng hình chuẩn xác (`run-revit-mcp`):** Khi bạn ra lệnh dựng hình, AI sẽ tự động tuân thủ quy trình 4 bước (*Chẩn đoán ➔ Lập kế hoạch ➔ Thực thi ➔ Xác thực*), ưu tiên sử dụng cấu kiện BIM gốc của Revit và bắt buộc chụp ảnh snapshot thực tế của dự án để bạn nghiệm thu trực quan.
+* **Tạo câu lệnh mới (`revit-mcp-command`):** Hỗ trợ lập trình viên sinh mã nguồn mẫu cho các command Revit mới và tự động triển khai lên máy chủ MCP.
+
+---
+
 **Chúc bạn có trải nghiệm tự động hóa tuyệt vời với Revit MCP!**
