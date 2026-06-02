@@ -242,6 +242,10 @@ When a tool call fails:
 4. Only fall back to `send_code_to_revit` if the dedicated tool has a confirmed bug that prevents the specific operation.
 5. If the error persists after 2 retries, log it and continue with remaining tasks.
 
+### Command gaps
+
+If a missing command, repeated dynamic C# workaround, or `Method not found` blocks the task, load `references/command-gap-workflow.md`. Default to `propose`: detect the gap from the trace and generate a reviewable command proposal. Do not scaffold, build, deploy, restart Revit, or commit command code unless the user explicitly approves implementation.
+
 ## Phase 4: Verify & Report
 
 After all execution steps complete:
