@@ -4,15 +4,15 @@ Use this reference only when direct MCP tools are unavailable, stale, or fail wi
 
 ## Runtime Discovery Order
 
-1. Run `src/RevitHarness/bootstrap.ps1`.
+1. Run `.\harness check`.
 2. Prefer direct MCP tools exposed to the agent.
-3. If direct MCP discovery is stale but Revit runtime has the command, call `src/RevitHarness/invoke-command.ps1`.
+3. If direct MCP discovery is stale but Revit runtime has the command, call it through `.\harness invoke <command>`.
 4. Use compiled helper DLL flow only for large C# payloads or custom geometry.
 5. Use inline `send_code_to_revit` only when the command wrapper and compiled helper flow are inappropriate.
 
 ## JSON-RPC Invocation
 
-Use params files or canonical JSON through `invoke-command.ps1` to avoid PowerShell quoting errors.
+Use params files or canonical JSON through `.\harness invoke` to avoid PowerShell quoting errors.
 
 Example:
 
@@ -20,7 +20,7 @@ Example:
 $params = @{ data = @(@{ name = "L1"; elevation = 0 }) } | ConvertTo-Json -Depth 10
 $paramsPath = New-TemporaryFile
 Set-Content -Path $paramsPath.FullName -Value $params -Encoding UTF8
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\RevitHarness\invoke-command.ps1' -CommandName create_level -ParamsPath $paramsPath.FullName
+.\harness invoke create_level --params-file $paramsPath.FullName
 ```
 
 ## Compiled Helper Flow

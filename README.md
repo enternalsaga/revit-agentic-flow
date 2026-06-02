@@ -120,7 +120,7 @@ Bộ harness giúp bạn **chẩn đoán, kiểm thử, và cải tiến** hệ 
 |---|---|---|
 | Không biết Revit plugin đã kết nối chưa | `.\harness check` | Kiểm tra transport và báo cáo trạng thái |
 | Command có trong code nhưng runtime không thấy | `.\harness registry` | Phát hiện drift giữa 4 layer |
-| Gọi lệnh Revit bị lỗi JSON do shell quoting | `.\harness invoke <tên_lệnh>` | Tự xử lý params qua temp file hoặc inline JSON |
+| Gọi lệnh Revit bị lỗi JSON do shell quoting | `.\harness invoke <tên_lệnh>` | Tự xử lý params qua file JSON |
 | Lỗi lặp lại nhưng không ai nhớ pattern | `.\harness classify <file>` | Phân loại lỗi và gợi ý cách sửa |
 | Thiếu command cho thao tác phổ biến | `.\harness gap <subcommand>` | Phát hiện, đề xuất và tạo code mẫu (scaffold) |
  
@@ -159,10 +159,8 @@ Thay vì tự viết JSON-RPC call và bị lỗi quoting, dùng CLI wrapper:
 # Gọi với params phức tạp (truyền qua file)
 .\harness invoke create_level --params-file .\params.json --timeout 60
 
-# Gọi với params inline JSON
-.\harness invoke create_level --params "{\"levelName\": \"Level 3\", \"elevation\": 3000}"
 ```
- 
+
 Kết quả luôn trả về dạng chuẩn — có `success`, `durationMs`, `error.categoryHint` nếu lỗi — giúp bạn debug nhanh hơn.
  
 ### Phân loại lỗi

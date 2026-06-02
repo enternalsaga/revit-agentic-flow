@@ -55,7 +55,7 @@ try {
     $job = Start-Job -ScriptBlock {
         param($scriptPath, $method, $paramsFile, $timeoutSeconds)
         $json = Get-Content -Path $paramsFile -Raw
-        powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Method $method -ParamsJson $json -TimeoutSeconds $timeoutSeconds
+        & $scriptPath -Method $method -ParamsJson $json -TimeoutSeconds $timeoutSeconds
     } -ArgumentList $bridgeScript, $CommandName, $tempParams.FullName, $TimeoutSeconds
 
     if (-not (Wait-Job $job -Timeout $TimeoutSeconds)) {
@@ -63,7 +63,11 @@ try {
         throw "Command timed out after $TimeoutSeconds seconds"
     }
 
-    $output = Receive-Job $job -ErrorAction Stop
+    $jobErrors = @()
+    $output = Receive-Job $job -ErrorAction SilentlyContinue -ErrorVariable jobErrors
+    if ($jobErrors) {
+        throw (($jobErrors | ForEach-Object { $_.ToString() }) -join "`n")
+    }
 
     $duration = [int]((Get-Date) - $started).TotalMilliseconds
     [ordered]@{

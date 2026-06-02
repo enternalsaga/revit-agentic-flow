@@ -3,6 +3,7 @@ setlocal enabledelayedexpansion
 
 set "HARNESS_DIR=%~dp0src\RevitHarness"
 set "PS=powershell -NoProfile -ExecutionPolicy Bypass -File"
+set "HELP_EXIT_CODE=0"
 
 if "%~1"=="" goto :help
 if /i "%~1"=="help" goto :help
@@ -15,8 +16,9 @@ if /i "%~1"=="evals" goto :evals
 if /i "%~1"=="gap" goto :gap
 
 echo [ERROR] Unknown subcommand: %~1
-echo Run 'harness help' for usage.
-exit /b 2
+echo.
+set "HELP_EXIT_CODE=2"
+goto :help
 
 :check
 %PS% "%HARNESS_DIR%\bootstrap.ps1" -WriteCache
@@ -70,7 +72,7 @@ exit /b %ERRORLEVEL%
 if /i "%~2"=="new" (
     if "%~3"=="" (
         echo [ERROR] Usage: harness trace new ^<task-label^> [--intent "description"]
-        exit /b 2
+        goto :usage_error
     )
     set "INTENT_ARG="
     if /i "%~4"=="--intent" set "INTENT_ARG=-UserIntent "%~5""
@@ -80,11 +82,11 @@ if /i "%~2"=="new" (
 if /i "%~2"=="append" (
     if "%~3"=="" (
         echo [ERROR] Usage: harness trace append ^<runId^> ^<command-result.json^>
-        exit /b 2
+        goto :usage_error
     )
     if "%~4"=="" (
         echo [ERROR] Usage: harness trace append ^<runId^> ^<command-result.json^>
-        exit /b 2
+        goto :usage_error
     )
     %PS% "%HARNESS_DIR%\trace-writer.ps1" -Mode append-command -RunId "%~3" -CommandResultPath "%~4"
     exit /b !ERRORLEVEL!
@@ -92,11 +94,11 @@ if /i "%~2"=="append" (
 if /i "%~2"=="finalize" (
     if "%~3"=="" (
         echo [ERROR] Usage: harness trace finalize ^<runId^> ^<passed^|failed^|partial^>
-        exit /b 2
+        goto :usage_error
     )
     if "%~4"=="" (
         echo [ERROR] Usage: harness trace finalize ^<runId^> ^<passed^|failed^|partial^>
-        exit /b 2
+        goto :usage_error
     )
     %PS% "%HARNESS_DIR%\trace-writer.ps1" -Mode finalize -RunId "%~3" -FinalStatus "%~4"
     exit /b !ERRORLEVEL!
@@ -117,7 +119,7 @@ exit /b %ERRORLEVEL%
 if /i "%~2"=="detect" (
     if "%~3"=="" (
         echo [ERROR] Usage: harness gap detect ^<trace.json^>
-        exit /b 2
+        goto :usage_error
     )
     %PS% "%HARNESS_DIR%\detect-command-gap.ps1" -TracePath "%~3"
     exit /b !ERRORLEVEL!
@@ -125,7 +127,7 @@ if /i "%~2"=="detect" (
 if /i "%~2"=="propose" (
     if "%~3"=="" (
         echo [ERROR] Usage: harness gap propose ^<gap-file.json^>
-        exit /b 2
+        goto :usage_error
     )
     %PS% "%HARNESS_DIR%\generate-command-proposal.ps1" -GapPath "%~3"
     exit /b !ERRORLEVEL!
@@ -133,7 +135,7 @@ if /i "%~2"=="propose" (
 if /i "%~2"=="validate" (
     if "%~3"=="" (
         echo [ERROR] Usage: harness gap validate ^<proposal.json^>
-        exit /b 2
+        goto :usage_error
     )
     %PS% "%HARNESS_DIR%\validate-command-proposal.ps1" -ProposalPath "%~3" -RequireApproved
     exit /b !ERRORLEVEL!
@@ -141,7 +143,7 @@ if /i "%~2"=="validate" (
 if /i "%~2"=="scaffold" (
     if "%~3"=="" (
         echo [ERROR] Usage: harness gap scaffold ^<proposal.json^> [--dry-run]
-        exit /b 2
+        goto :usage_error
     )
     set "SCAFFOLD_MODE=-Apply"
     if /i "%~3"=="--dry-run" set "SCAFFOLD_MODE=-DryRun"
@@ -151,6 +153,9 @@ if /i "%~2"=="scaffold" (
 )
 echo [ERROR] Unknown gap subcommand: %~2
 echo Usage: harness gap ^<detect^|propose^|validate^|scaffold^> ...
+exit /b 2
+
+:usage_error
 exit /b 2
 
 :help
@@ -179,4 +184,4 @@ echo     gap validate ^<proposal.json^>   Validate proposal before scaffold
 echo     gap scaffold ^<proposal^> [--dry-run]  Scaffold command (dry-run or apply)
 echo     help                           Show this help
 echo.
-exit /b 0
+exit /b %HELP_EXIT_CODE%

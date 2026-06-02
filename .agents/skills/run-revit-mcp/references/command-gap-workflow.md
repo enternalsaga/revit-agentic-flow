@@ -10,15 +10,15 @@ Use this reference when a Revit MCP task reveals that a dedicated command is mis
 
 ## Required Flow
 
-1. Run `src/RevitHarness/detect-command-gap.ps1` against the trace that contains the failure.
-2. Run `src/RevitHarness/generate-command-proposal.ps1` for each confirmed gap.
+1. Run `.\harness gap detect <trace-file>` against the trace that contains the failure.
+2. Run `.\harness gap propose <gap-file>` for each confirmed gap.
 3. Report the proposal path to the user.
 4. Do not scaffold or edit source unless the user approves the proposal.
-5. After approval, run `src/RevitHarness/validate-command-proposal.ps1 -RequireApproved`.
-6. Run `src/RevitHarness/scaffold-command.ps1 -DryRun`.
+5. After approval, run `.\harness gap validate <proposal-file>`.
+6. Run `.\harness gap scaffold <proposal-file> --dry-run`.
 7. Review the dry-run scaffold.
-8. Run `src/RevitHarness/scaffold-command.ps1 -Apply` only when source edits are explicitly requested.
-9. Run registry report and command-specific evals after source changes.
+8. Run `.\harness gap scaffold <proposal-file>` only when source edits are explicitly requested.
+9. Run `.\harness registry` and command-specific evals after source changes.
 
 ## Default User-Facing Report
 

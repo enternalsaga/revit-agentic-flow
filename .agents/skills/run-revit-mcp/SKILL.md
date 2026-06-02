@@ -54,16 +54,16 @@ For each task from Phase 1, assign the MCP tool to use.
 
 Before executing or planning fallback calls, run:
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache
+```batch
+.\harness check
 ```
 
 Use the bootstrap report as runtime truth:
 
 - If direct MCP tools are visible, prefer them.
-- If direct MCP discovery is stale but JSON-RPC is available, use `src/RevitHarness/invoke-command.ps1`.
+- If direct MCP discovery is stale but JSON-RPC is available, use `.\harness invoke <command>`.
 - If no transport is available, stop and report that Revit/plugin is not connected.
-- If a command fails, save or update a trace, classify the failure, and append the classification with `src/RevitHarness/trace-writer.ps1 -Mode append-classification`.
+- If a command fails, save or update a trace, classify the failure through `.\harness classify <error-file>`, and append trace data through `.\harness trace`.
 
 ### Reference Loading
 
@@ -118,7 +118,7 @@ Use `.agents/skills/run-revit-mcp/references/tool-reference.md` when mapping tas
 
 **Resolution priority:**
 
-1. **JSON-RPC bridge (same session):** For JSON-RPC fallback and compiled helper flow, use `references/fallbacks.md`. Do not hand-write shell-quoted JSON when `src/RevitHarness/invoke-command.ps1` is available.
+1. **JSON-RPC bridge (same session):** For JSON-RPC fallback and compiled helper flow, use `references/fallbacks.md`. Do not hand-write shell-quoted JSON when `.\harness invoke` is available.
 2. **Restart MCP client:** Tell the user to restart Claude Code to pick up the latest build. All tools will then appear in ToolSearch.
 3. **`send_code_to_revit` workaround (last resort):** Only when both MCP tool and JSON-RPC bridge fail.
 

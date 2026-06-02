@@ -868,19 +868,21 @@ Purpose: eliminate long PowerShell invocation paths by providing a single entry-
 
 #### Problem Statement
 
-The research plan identifies that harness scripts exist but are inaccessible:
+Before the Phase 6 CLI wrapper, harness scripts existed but were hard to invoke directly:
 
 - Users must type `powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache` to run a simple health check.
 - Agents must construct these paths from memory or documentation, increasing error rate.
 - No workflow exists for agents to orchestrate multi-step harness operations (e.g., "check everything", "run evals then classify failures").
 - The `/start` workflow calls bootstrap but ignores registry, evals, and gap detection.
 
+Phase 6 resolves this by routing users and agents through `.\harness <subcommand>` while keeping source scripts under `src/RevitHarness/`.
+
 #### Deliverables
 
 - `harness.bat` at project root — batch wrapper dispatching to PowerShell scripts via subcommands.
 - `.agents/workflows/harness.md` — agent workflow for `/harness` invocation.
-- Updated `README.md` — replace all long PowerShell paths with short `.\harness <command>` syntax.
-- Updated `.agents/workflows/start.md` — replace inline bootstrap call with `.\harness check`.
+- Updated `README.md` — Section 4 uses short `.\harness <command>` syntax.
+- Updated `.agents/workflows/start.md` — harness bootstrap uses `.\harness check`.
 
 #### CLI Contract (`harness.bat`)
 
@@ -957,7 +959,7 @@ The workflow must:
 
 #### README Update Contract
 
-After Phase 6, README Section 4 must use only short CLI commands:
+README Section 4 must use only short CLI commands:
 
 Before:
 ```powershell
@@ -969,18 +971,18 @@ After:
 .\harness check
 ```
 
-Every code block in Section 4 must use `.\harness <subcommand>` syntax. No raw PowerShell invocation paths in the README.
+Every code block in Section 4 must use `.\harness <subcommand>` syntax. No raw PowerShell invocation paths should remain in README Section 4.
 
 #### `/start` Workflow Update
 
-Replace line:
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache
-```
-
-With:
+The `/start` workflow should invoke the harness through:
 ```batch
 .\harness check
+```
+
+This replaces the old direct script form:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache
 ```
 
 #### Acceptance Criteria
