@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["success", "command", "transport", "durationMs", "requestId", "paramsHash", "result", "error"],
+  "properties": {
+    "success": { "type": "boolean" },
+    "command": { "type": "string" },
+    "transport": { "type": "string" },
+    "durationMs": { "type": "integer" },
+    "requestId": { "type": "string" },
+    "paramsHash": { "type": ["string", "null"] },
+    "result": {},
+    "error": {
+      "type": ["object", "null"],
+      "properties": {
+        "categoryHint": { "type": "string" },
+        "message": { "type": "string" },
+        "raw": {}
+      }
+    }
+  }
+}

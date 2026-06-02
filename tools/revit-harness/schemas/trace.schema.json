@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["traceVersion", "runId", "timestampUtc", "workspaceRoot", "commands", "finalStatus"],
+  "properties": {
+    "traceVersion": { "type": "string" },
+    "runId": { "type": "string" },
+    "timestampUtc": { "type": "string" },
+    "workspaceRoot": { "type": "string" },
+    "taskLabel": { "type": "string" },
+    "userIntent": { "type": "string" },
+    "agentPlan": { "type": "array" },
+    "bootstrap": { "type": ["object", "null"] },
+    "commands": { "type": "array" },
+    "snapshots": { "type": "array" },
+    "modelStatistics": { "type": ["object", "null"] },
+    "warnings": { "type": ["object", "null"] },
+    "classifiedFailures": { "type": "array" },
+    "lessonCandidates": { "type": "array" },
+    "finalStatus": { "type": "string" }
+  }
+}

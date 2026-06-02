@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["success", "generatedAtUtc", "workspaceRoot", "transports", "registry", "guidance"],
+  "properties": {
+    "success": { "type": "boolean" },
+    "generatedAtUtc": { "type": "string" },
+    "workspaceRoot": { "type": "string" },
+    "transports": {
+      "type": "object",
+      "required": ["phase1Pipe", "legacyJsonRpc"],
+      "properties": {
+        "phase1Pipe": { "type": "string" },
+        "legacyJsonRpc": { "type": "string" }
+      }
+    },
+    "projectInfo": { "type": ["object", "null"] },
+    "registry": { "type": "object" },
+    "guidance": { "type": "array", "items": { "type": "string" } }
+  }
+}
