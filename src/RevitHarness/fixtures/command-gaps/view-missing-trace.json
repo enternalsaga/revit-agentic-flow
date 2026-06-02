@@ -1,0 +1,32 @@
+{
+  "traceVersion": "1.0",
+  "runId": "fixture_view_missing_001",
+  "timestampUtc": "2026-06-02T00:00:00Z",
+  "taskLabel": "fixture view missing",
+  "commands": [
+    {
+      "command": "switch_view",
+      "success": false,
+      "transport": "jsonrpc",
+      "params": {
+        "viewName": "{3D}"
+      },
+      "error": {
+        "categoryHint": "command_error",
+        "message": "View not found. Name='{3D}', Id="
+      }
+    }
+  ],
+  "classifiedFailures": [
+    {
+      "category": "view_missing",
+      "confidence": 0.9,
+      "evidence": [
+        "switch_view returned View not found for {3D}.",
+        "Agent used custom C# helper to create an isometric 3D view."
+      ],
+      "suggestedNextAction": "Add a dedicated switch_or_create_3d_view command."
+    }
+  ],
+  "finalStatus": "completed_with_fallback"
+}

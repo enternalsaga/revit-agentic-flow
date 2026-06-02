@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0",
+  "proposalId": "proposal_switch_or_create_3d_view_fixture",
+  "createdAtUtc": "2026-06-02T00:00:00Z",
+  "commandName": "switch_or_create_3d_view",
+  "summary": "Create or activate an isometric 3D view for verification snapshots.",
+  "reason": "The existing switch_view command fails when the requested 3D view does not exist, forcing agents to write ad hoc C# helpers.",
+  "mode": "implement",
+  "requiresHumanApproval": true,
+  "inputSchema": {
+    "viewName": { "type": "string", "default": "MCP_3D_Verification" },
+    "detailLevel": { "type": "string", "enum": ["Coarse", "Medium", "Fine"], "default": "Fine" },
+    "activate": { "type": "boolean", "default": true }
+  },
+  "outputSchema": {
+    "success": { "type": "boolean" },
+    "viewId": { "type": "integer" },
+    "viewName": { "type": "string" },
+    "created": { "type": "boolean" },
+    "activated": { "type": "boolean" }
+  },
+  "filesToCreate": [
+    "mcp-servers-for-revit/server/src/tools/switch_or_create_3d_view.ts",
+    "mcp-servers-for-revit/commandset/Commands/SwitchOrCreate3DViewCommand.cs",
+    "src/RevitHarness/evals/live/eval-switch-or-create-3d-view.ps1"
+  ],
+  "filesToModify": [
+    "src/RevitMcpServer/Tools/AccessTools.cs",
+    "mcp-servers-for-revit/command.json"
+  ],
+  "evalPlan": [
+    "Run registry report and confirm no source-layer coverage gaps for switch_or_create_3d_view.",
+    "Run live eval to create or activate MCP_3D_Verification.",
+    "Run snapshot_workspace after the view is active."
+  ],
+  "approval": {
+    "status": "approved",
+    "approvedBy": "fixture",
+    "approvedAtUtc": "2026-06-02T00:00:00Z"
+  }
+}
