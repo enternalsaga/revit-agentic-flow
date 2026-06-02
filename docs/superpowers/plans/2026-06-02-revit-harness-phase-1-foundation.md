@@ -1,10 +1,10 @@
-# Revit Harness Phase 1 Foundation Implementation Plan
+﻿# Revit Harness Phase 1 Foundation Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build the first Revit harness layer: runtime bootstrap, command registry report, safe command invocation, and trace writing.
 
-**Architecture:** Implement a small PowerShell harness under `tools/revit-harness/` because the project already uses PowerShell for Revit bridge workflows. Keep runtime output under `.revit-harness/` and source fixtures under `tools/revit-harness/fixtures/`.
+**Architecture:** Implement a small PowerShell harness under `src/RevitHarness/` because the project already uses PowerShell for Revit bridge workflows. Keep runtime output under `.revit-harness/` and source fixtures under `src/RevitHarness/fixtures/`.
 
 **Tech Stack:** PowerShell 5+, JSON, existing Revit JSON-RPC bridge script, Git, optional live Revit smoke tests.
 
@@ -12,14 +12,14 @@
 
 ## File Structure
 
-- Create: `tools/revit-harness/bootstrap.ps1` - source/runtime discovery entrypoint.
-- Create: `tools/revit-harness/registry-report.ps1` - source-layer command coverage report.
-- Create: `tools/revit-harness/invoke-command.ps1` - safe command invocation wrapper.
-- Create: `tools/revit-harness/trace-writer.ps1` - trace creation and append helpers.
-- Create: `tools/revit-harness/schemas/bootstrap.schema.json` - documented bootstrap output schema.
-- Create: `tools/revit-harness/schemas/command-result.schema.json` - documented invocation envelope schema.
-- Create: `tools/revit-harness/schemas/trace.schema.json` - documented trace schema.
-- Create: `tools/revit-harness/fixtures/sample-bootstrap.json` - stable fixture for report consumers.
+- Create: `src/RevitHarness/bootstrap.ps1` - source/runtime discovery entrypoint.
+- Create: `src/RevitHarness/registry-report.ps1` - source-layer command coverage report.
+- Create: `src/RevitHarness/invoke-command.ps1` - safe command invocation wrapper.
+- Create: `src/RevitHarness/trace-writer.ps1` - trace creation and append helpers.
+- Create: `src/RevitHarness/schemas/bootstrap.schema.json` - documented bootstrap output schema.
+- Create: `src/RevitHarness/schemas/command-result.schema.json` - documented invocation envelope schema.
+- Create: `src/RevitHarness/schemas/trace.schema.json` - documented trace schema.
+- Create: `src/RevitHarness/fixtures/sample-bootstrap.json` - stable fixture for report consumers.
 - Modify: `.gitignore` - ignore `.revit-harness/runs/`, `.revit-harness/cache/`, and `.revit-harness/lesson-candidates/`.
 
 ### Task 1: Add Runtime Output Ignore Rules
@@ -32,7 +32,7 @@
 Run:
 
 ```powershell
-Select-String -Path '.gitignore' -Pattern '\.revit-harness|tools/revit-harness' -CaseSensitive:$false
+Select-String -Path '.gitignore' -Pattern '\.revit-harness|src/RevitHarness' -CaseSensitive:$false
 ```
 
 Expected: either no output or existing `.revit-harness` entries to preserve.
@@ -70,14 +70,14 @@ git commit -m "chore: ignore revit harness runtime output"
 ### Task 2: Create Registry Report Script
 
 **Files:**
-- Create: `tools/revit-harness/registry-report.ps1`
+- Create: `src/RevitHarness/registry-report.ps1`
 
 - [ ] **Step 1: Write the failing smoke check**
 
 Run before the file exists:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\registry-report.ps1' | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\registry-report.ps1' | ConvertFrom-Json
 ```
 
 Expected: FAIL because `registry-report.ps1` does not exist.
@@ -188,7 +188,7 @@ $report | ConvertTo-Json -Depth 20
 - [ ] **Step 3: Run registry report**
 
 ```powershell
-$report = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\registry-report.ps1' | ConvertFrom-Json
+$report = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\registry-report.ps1' | ConvertFrom-Json
 $report.success
 $report.counts
 ```
@@ -198,19 +198,19 @@ Expected: `True`, then counts for manifest/tools/wrappers/implementations.
 - [ ] **Step 4: Commit**
 
 ```powershell
-git add tools/revit-harness/registry-report.ps1
+git add src/RevitHarness/registry-report.ps1
 git commit -m "feat: add revit harness registry report"
 ```
 
 ### Task 3: Create Safe Command Invocation Wrapper
 
 **Files:**
-- Create: `tools/revit-harness/invoke-command.ps1`
+- Create: `src/RevitHarness/invoke-command.ps1`
 
 - [ ] **Step 1: Write the failing smoke check**
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName get_project_info
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName get_project_info
 ```
 
 Expected: FAIL because the file does not exist.
@@ -322,7 +322,7 @@ try {
 - [ ] **Step 3: Test invalid JSON classification**
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName get_project_info -ParamsJson '{bad json}' | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName get_project_info -ParamsJson '{bad json}' | ConvertFrom-Json
 ```
 
 Expected: `success = false`, `error.categoryHint = json_quoting`.
@@ -332,7 +332,7 @@ Expected: `success = false`, `error.categoryHint = json_quoting`.
 Run when Revit and the plugin are open:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName get_project_info | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName get_project_info | ConvertFrom-Json
 ```
 
 Expected: `success = true` and `transport = jsonrpc`.
@@ -340,20 +340,20 @@ Expected: `success = true` and `transport = jsonrpc`.
 - [ ] **Step 5: Commit**
 
 ```powershell
-git add tools/revit-harness/invoke-command.ps1
+git add src/RevitHarness/invoke-command.ps1
 git commit -m "feat: add safe revit command invocation wrapper"
 ```
 
 ### Task 4: Add Bootstrap Script
 
 **Files:**
-- Create: `tools/revit-harness/bootstrap.ps1`
-- Create: `tools/revit-harness/fixtures/sample-bootstrap.json`
+- Create: `src/RevitHarness/bootstrap.ps1`
+- Create: `src/RevitHarness/fixtures/sample-bootstrap.json`
 
 - [ ] **Step 1: Write failing bootstrap check**
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1'
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1'
 ```
 
 Expected: FAIL because file does not exist.
@@ -367,8 +367,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$registryScript = Join-Path $WorkspaceRoot "tools/revit-harness/registry-report.ps1"
-$invokeScript = Join-Path $WorkspaceRoot "tools/revit-harness/invoke-command.ps1"
+$registryScript = Join-Path $WorkspaceRoot "src/RevitHarness/registry-report.ps1"
+$invokeScript = Join-Path $WorkspaceRoot "src/RevitHarness/invoke-command.ps1"
 
 $registry = powershell -NoProfile -ExecutionPolicy Bypass -File $registryScript -WorkspaceRoot $WorkspaceRoot | ConvertFrom-Json
 
@@ -419,7 +419,7 @@ $bootstrap | ConvertTo-Json -Depth 50
 Run:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' | Set-Content -Path '.\tools\revit-harness\fixtures\sample-bootstrap.json'
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' | Set-Content -Path '.\src\\RevitHarness\fixtures\sample-bootstrap.json'
 ```
 
 Expected: `sample-bootstrap.json` exists and contains `transports`, `registry`, and `guidance`.
@@ -427,17 +427,17 @@ Expected: `sample-bootstrap.json` exists and contains `transports`, `registry`, 
 - [ ] **Step 4: Commit**
 
 ```powershell
-git add tools/revit-harness/bootstrap.ps1 tools/revit-harness/fixtures/sample-bootstrap.json
+git add src/RevitHarness/bootstrap.ps1 src/RevitHarness/fixtures/sample-bootstrap.json
 git commit -m "feat: add revit harness bootstrap"
 ```
 
 ### Task 5: Add Trace Writer and Schemas
 
 **Files:**
-- Create: `tools/revit-harness/trace-writer.ps1`
-- Create: `tools/revit-harness/schemas/bootstrap.schema.json`
-- Create: `tools/revit-harness/schemas/command-result.schema.json`
-- Create: `tools/revit-harness/schemas/trace.schema.json`
+- Create: `src/RevitHarness/trace-writer.ps1`
+- Create: `src/RevitHarness/schemas/bootstrap.schema.json`
+- Create: `src/RevitHarness/schemas/command-result.schema.json`
+- Create: `src/RevitHarness/schemas/trace.schema.json`
 
 - [ ] **Step 1: Create schema files**
 
@@ -601,7 +601,7 @@ $trace | ConvertTo-Json -Depth 50 | Set-Content -Path $tracePath -Encoding UTF8
 - [ ] **Step 3: Test trace creation**
 
 ```powershell
-$created = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\trace-writer.ps1' -Mode new -TaskLabel phase1-smoke -UserIntent "smoke" | ConvertFrom-Json
+$created = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\trace-writer.ps1' -Mode new -TaskLabel phase1-smoke -UserIntent "smoke" | ConvertFrom-Json
 Test-Path $created.tracePath
 ```
 
@@ -610,7 +610,7 @@ Expected: `True`.
 - [ ] **Step 4: Commit**
 
 ```powershell
-git add tools/revit-harness/trace-writer.ps1 tools/revit-harness/schemas
+git add src/RevitHarness/trace-writer.ps1 src/RevitHarness/schemas
 git commit -m "feat: add revit harness trace writer"
 ```
 
@@ -622,7 +622,7 @@ git commit -m "feat: add revit harness trace writer"
 - [ ] **Step 1: Run local registry report**
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\registry-report.ps1' | ConvertFrom-Json | Select-Object success, counts
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\registry-report.ps1' | ConvertFrom-Json | Select-Object success, counts
 ```
 
 Expected: `success = True`.
@@ -630,7 +630,7 @@ Expected: `success = True`.
 - [ ] **Step 2: Run bootstrap**
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' -WriteCache | ConvertFrom-Json | Select-Object success, transports
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' -WriteCache | ConvertFrom-Json | Select-Object success, transports
 ```
 
 Expected: `success = True`. Revit transport may be `available` or `unavailable` depending on environment.
@@ -638,8 +638,8 @@ Expected: `success = True`. Revit transport may be `available` or `unavailable` 
 - [ ] **Step 3: Run trace smoke**
 
 ```powershell
-$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\trace-writer.ps1' -Mode new -TaskLabel phase1-final-smoke | ConvertFrom-Json
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\trace-writer.ps1' -Mode finalize -RunId $run.runId -FinalStatus passed | ConvertFrom-Json
+$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\trace-writer.ps1' -Mode new -TaskLabel phase1-final-smoke | ConvertFrom-Json
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\trace-writer.ps1' -Mode finalize -RunId $run.runId -FinalStatus passed | ConvertFrom-Json
 Get-Content $run.tracePath -Raw | ConvertFrom-Json | Select-Object runId, finalStatus
 ```
 
@@ -650,6 +650,7 @@ Expected: `finalStatus = passed`.
 If no files changed, skip this commit. If fixes were needed:
 
 ```powershell
-git add tools/revit-harness .gitignore
+git add src/RevitHarness .gitignore
 git commit -m "fix: stabilize revit harness foundation"
 ```
+

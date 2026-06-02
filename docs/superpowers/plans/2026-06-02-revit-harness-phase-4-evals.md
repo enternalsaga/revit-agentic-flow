@@ -1,4 +1,4 @@
-# Revit Harness Phase 4 Evals Implementation Plan
+﻿# Revit Harness Phase 4 Evals Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,28 +12,28 @@
 
 ## File Structure
 
-- Create: `tools/revit-harness/evals/run-evals.ps1`
-- Create: `tools/revit-harness/evals/eval-bootstrap.ps1`
-- Create: `tools/revit-harness/evals/eval-registry-report.ps1`
-- Create: `tools/revit-harness/evals/eval-invoke-command.ps1`
-- Create: `tools/revit-harness/evals/eval-failure-classifier.ps1`
-- Create: `tools/revit-harness/evals/eval-trace-writer.ps1`
-- Create: `tools/revit-harness/evals/live/eval-create-levels-grids.ps1`
-- Create: `tools/revit-harness/evals/live/eval-create-basic-building.ps1`
-- Create: `tools/revit-harness/evals/live/eval-create-or-switch-3d-view.ps1`
-- Create: `tools/revit-harness/evals/live/eval-snapshot-statistics.ps1`
-- Runtime output: `tools/revit-harness/evals/results/`
+- Create: `src/RevitHarness/evals/run-evals.ps1`
+- Create: `src/RevitHarness/evals/eval-bootstrap.ps1`
+- Create: `src/RevitHarness/evals/eval-registry-report.ps1`
+- Create: `src/RevitHarness/evals/eval-invoke-command.ps1`
+- Create: `src/RevitHarness/evals/eval-failure-classifier.ps1`
+- Create: `src/RevitHarness/evals/eval-trace-writer.ps1`
+- Create: `src/RevitHarness/evals/live/eval-create-levels-grids.ps1`
+- Create: `src/RevitHarness/evals/live/eval-create-basic-building.ps1`
+- Create: `src/RevitHarness/evals/live/eval-create-or-switch-3d-view.ps1`
+- Create: `src/RevitHarness/evals/live/eval-snapshot-statistics.ps1`
+- Runtime output: `src/RevitHarness/evals/results/`
 
 ### Task 1: Add Eval Result Helpers
 
 **Files:**
-- Create: `tools/revit-harness/evals/run-evals.ps1`
+- Create: `src/RevitHarness/evals/run-evals.ps1`
 
 - [ ] **Step 1: Create eval directory**
 
 ```powershell
-New-Item -ItemType Directory -Force 'tools/revit-harness/evals/live' | Out-Null
-New-Item -ItemType Directory -Force 'tools/revit-harness/evals/results' | Out-Null
+New-Item -ItemType Directory -Force 'src/RevitHarness/evals/live' | Out-Null
+New-Item -ItemType Directory -Force 'src/RevitHarness/evals/results' | Out-Null
 ```
 
 - [ ] **Step 2: Create `run-evals.ps1`**
@@ -41,7 +41,7 @@ New-Item -ItemType Directory -Force 'tools/revit-harness/evals/results' | Out-Nu
 ```powershell
 param(
     [switch]$IncludeLive,
-    [string]$ResultsDirectory = "tools/revit-harness/evals/results"
+    [string]$ResultsDirectory = "src/RevitHarness/evals/results"
 )
 
 $ErrorActionPreference = "Stop"
@@ -68,7 +68,7 @@ if ($IncludeLive) {
 
 $results = @()
 foreach ($evalFile in $evalFiles) {
-    $path = Join-Path "tools/revit-harness/evals" $evalFile
+    $path = Join-Path "src/RevitHarness/evals" $evalFile
     $before = Get-Date
     try {
         $result = powershell -NoProfile -ExecutionPolicy Bypass -File $path | ConvertFrom-Json
@@ -108,18 +108,18 @@ $run | ConvertTo-Json -Depth 50
 - [ ] **Step 3: Commit runner**
 
 ```powershell
-git add tools/revit-harness/evals/run-evals.ps1
+git add src/RevitHarness/evals/run-evals.ps1
 git commit -m "feat: add revit harness eval runner"
 ```
 
 ### Task 2: Add Technical Evals
 
 **Files:**
-- Create: `tools/revit-harness/evals/eval-bootstrap.ps1`
-- Create: `tools/revit-harness/evals/eval-registry-report.ps1`
-- Create: `tools/revit-harness/evals/eval-invoke-command.ps1`
-- Create: `tools/revit-harness/evals/eval-failure-classifier.ps1`
-- Create: `tools/revit-harness/evals/eval-trace-writer.ps1`
+- Create: `src/RevitHarness/evals/eval-bootstrap.ps1`
+- Create: `src/RevitHarness/evals/eval-registry-report.ps1`
+- Create: `src/RevitHarness/evals/eval-invoke-command.ps1`
+- Create: `src/RevitHarness/evals/eval-failure-classifier.ps1`
+- Create: `src/RevitHarness/evals/eval-trace-writer.ps1`
 
 - [ ] **Step 1: Create common result pattern**
 
@@ -141,7 +141,7 @@ Each eval file should return this structure:
 ```powershell
 $started = Get-Date
 $assertions = @()
-$report = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\registry-report.ps1' | ConvertFrom-Json
+$report = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\registry-report.ps1' | ConvertFrom-Json
 $assertions += @{ name = "registryReportsSuccess"; passed = [bool]$report.success; message = "" }
 $assertions += @{ name = "manifestHasCommands"; passed = ($report.counts.manifest -gt 0); message = "manifest count is $($report.counts.manifest)" }
 $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "passed" } else { "failed" }
@@ -153,7 +153,7 @@ $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "p
 ```powershell
 $started = Get-Date
 $assertions = @()
-$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' | ConvertFrom-Json
+$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' | ConvertFrom-Json
 $assertions += @{ name = "bootstrapReportsSuccess"; passed = [bool]$bootstrap.success; message = "" }
 $assertions += @{ name = "bootstrapHasTransports"; passed = ($null -ne $bootstrap.transports); message = "" }
 $assertions += @{ name = "bootstrapHasRegistry"; passed = ($null -ne $bootstrap.registry); message = "" }
@@ -166,7 +166,7 @@ $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "p
 ```powershell
 $started = Get-Date
 $assertions = @()
-$result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName get_project_info -ParamsJson '{bad json}' | ConvertFrom-Json
+$result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName get_project_info -ParamsJson '{bad json}' | ConvertFrom-Json
 $assertions += @{ name = "invalidJsonFails"; passed = (-not $result.success); message = "" }
 $assertions += @{ name = "invalidJsonClassified"; passed = ($result.error.categoryHint -eq "json_quoting"); message = "category was $($result.error.categoryHint)" }
 $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "passed" } else { "failed" }
@@ -186,7 +186,7 @@ $expected = @{
   "verification_gap" = "verification_gap"
 }
 foreach ($name in $expected.Keys) {
-  $result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\classify-failure.ps1' -InputPath "tools/revit-harness/fixtures/errors/$name.json" | ConvertFrom-Json
+  $result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\classify-failure.ps1' -InputPath "src/RevitHarness/fixtures/errors/$name.json" | ConvertFrom-Json
   $assertions += @{ name = "classifies_$name"; passed = ($result.category -eq $expected[$name]); message = "category was $($result.category)" }
 }
 $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "passed" } else { "failed" }
@@ -198,7 +198,7 @@ $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "p
 ```powershell
 $started = Get-Date
 $assertions = @()
-$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\trace-writer.ps1' -Mode new -TaskLabel eval-trace-writer | ConvertFrom-Json
+$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\trace-writer.ps1' -Mode new -TaskLabel eval-trace-writer | ConvertFrom-Json
 $traceExists = Test-Path $run.tracePath
 $trace = if ($traceExists) { Get-Content $run.tracePath -Raw | ConvertFrom-Json } else { $null }
 $assertions += @{ name = "traceCreated"; passed = $traceExists; message = $run.tracePath }
@@ -210,17 +210,17 @@ $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "p
 - [ ] **Step 7: Commit technical evals**
 
 ```powershell
-git add tools/revit-harness/evals/eval-*.ps1
+git add src/RevitHarness/evals/eval-*.ps1
 git commit -m "feat: add revit harness technical evals"
 ```
 
 ### Task 3: Add Live Revit Eval Skip Harness
 
 **Files:**
-- Create: `tools/revit-harness/evals/live/eval-create-levels-grids.ps1`
-- Create: `tools/revit-harness/evals/live/eval-create-basic-building.ps1`
-- Create: `tools/revit-harness/evals/live/eval-create-or-switch-3d-view.ps1`
-- Create: `tools/revit-harness/evals/live/eval-snapshot-statistics.ps1`
+- Create: `src/RevitHarness/evals/live/eval-create-levels-grids.ps1`
+- Create: `src/RevitHarness/evals/live/eval-create-basic-building.ps1`
+- Create: `src/RevitHarness/evals/live/eval-create-or-switch-3d-view.ps1`
+- Create: `src/RevitHarness/evals/live/eval-snapshot-statistics.ps1`
 
 - [ ] **Step 1: Create shared live preflight block**
 
@@ -228,7 +228,7 @@ Use this block at the top of each live eval:
 
 ```powershell
 $started = Get-Date
-$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' | ConvertFrom-Json
+$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' | ConvertFrom-Json
 if ($bootstrap.transports.legacyJsonRpc -ne "available") {
   [ordered]@{
     name = "LIVE_EVAL_NAME"
@@ -244,15 +244,15 @@ if ($bootstrap.transports.legacyJsonRpc -ne "available") {
 
 ```powershell
 $started = Get-Date
-$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' | ConvertFrom-Json
+$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' | ConvertFrom-Json
 if ($bootstrap.transports.legacyJsonRpc -ne "available") {
   [ordered]@{ name = "eval-create-levels-grids"; status = "skipped"; durationMs = [int]((Get-Date)-$started).TotalMilliseconds; assertions = @(@{ name = "revitConnected"; passed = $false; message = "Revit JSON-RPC unavailable" }) } | ConvertTo-Json -Depth 10
   exit 0
 }
 $levelParams = @{ data = @(@{ name = "EVAL_L1"; elevation = 0; createFloorPlan = $false; createCeilingPlan = $false }) } | ConvertTo-Json -Depth 10 -Compress
-$level = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName create_level -ParamsJson $levelParams | ConvertFrom-Json
+$level = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName create_level -ParamsJson $levelParams | ConvertFrom-Json
 $gridParams = @{ xGrids = @(@{ label = "EX1"; position = 0 }); yGrids = @(@{ label = "EY1"; position = 0 }); xExtentMin = 0; xExtentMax = 1000; yExtentMin = 0; yExtentMax = 1000; elevation = 0 } | ConvertTo-Json -Depth 10 -Compress
-$grid = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName create_custom_grid -ParamsJson $gridParams | ConvertFrom-Json
+$grid = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName create_custom_grid -ParamsJson $gridParams | ConvertFrom-Json
 $assertions = @(
   @{ name = "levelCommandSucceeded"; passed = [bool]$level.success; message = "" },
   @{ name = "gridCommandSucceeded"; passed = [bool]$grid.success; message = "" }
@@ -265,14 +265,14 @@ $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "p
 
 ```powershell
 $started = Get-Date
-$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' | ConvertFrom-Json
+$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' | ConvertFrom-Json
 if ($bootstrap.transports.legacyJsonRpc -ne "available") {
   [ordered]@{ name = "eval-snapshot-statistics"; status = "skipped"; durationMs = [int]((Get-Date)-$started).TotalMilliseconds; assertions = @(@{ name = "revitConnected"; passed = $false; message = "Revit JSON-RPC unavailable" }) } | ConvertTo-Json -Depth 10
   exit 0
 }
-$stats = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName analyze_model_statistics | ConvertFrom-Json
+$stats = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName analyze_model_statistics | ConvertFrom-Json
 $snapshotParams = @{ includeImage = $false; includeVisibleElements = $true; pixelSize = 800 } | ConvertTo-Json -Depth 10 -Compress
-$snapshot = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName snapshot_workspace -ParamsJson $snapshotParams | ConvertFrom-Json
+$snapshot = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName snapshot_workspace -ParamsJson $snapshotParams | ConvertFrom-Json
 $assertions = @(
   @{ name = "statisticsSucceeded"; passed = [bool]$stats.success; message = "" },
   @{ name = "snapshotSucceeded"; passed = [bool]$snapshot.success; message = "" }
@@ -287,7 +287,7 @@ Create `eval-create-basic-building.ps1`:
 
 ```powershell
 $started = Get-Date
-$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' | ConvertFrom-Json
+$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' | ConvertFrom-Json
 if ($bootstrap.transports.legacyJsonRpc -ne "available") {
   [ordered]@{ name = "eval-create-basic-building"; status = "skipped"; durationMs = [int]((Get-Date)-$started).TotalMilliseconds; assertions = @(@{ name = "revitConnected"; passed = $false; message = "Revit JSON-RPC unavailable" }) } | ConvertTo-Json -Depth 10
   exit 0
@@ -299,9 +299,9 @@ $loop = @(
   @{ p0 = @{ x = 0; y = 3000; z = 0 }; p1 = @{ x = 0; y = 0; z = 0 } }
 )
 $floorParams = @{ data = @(@{ name = "EVAL_Floor"; category = "OST_Floors"; boundary = @{ outerLoop = $loop }; thickness = 150; baseLevel = 0; baseOffset = 0 }) } | ConvertTo-Json -Depth 20 -Compress
-$floor = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName create_surface_based_element -ParamsJson $floorParams | ConvertFrom-Json
+$floor = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName create_surface_based_element -ParamsJson $floorParams | ConvertFrom-Json
 $wallParams = @{ data = @(@{ category = "OST_Walls"; locationLine = @{ p0 = @{ x = 0; y = 0; z = 0 }; p1 = @{ x = 3000; y = 0; z = 0 } }; thickness = 150; height = 3000; baseLevel = 0; baseOffset = 0 }) } | ConvertTo-Json -Depth 20 -Compress
-$wall = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName create_line_based_element -ParamsJson $wallParams | ConvertFrom-Json
+$wall = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName create_line_based_element -ParamsJson $wallParams | ConvertFrom-Json
 $assertions = @(
   @{ name = "floorCommandSucceeded"; passed = [bool]$floor.success; message = "" },
   @{ name = "wallCommandSucceeded"; passed = [bool]$wall.success; message = "" }
@@ -314,18 +314,18 @@ Create `eval-create-or-switch-3d-view.ps1`:
 
 ```powershell
 $started = Get-Date
-$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\bootstrap.ps1' | ConvertFrom-Json
+$bootstrap = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\bootstrap.ps1' | ConvertFrom-Json
 if ($bootstrap.transports.legacyJsonRpc -ne "available") {
   [ordered]@{ name = "eval-create-or-switch-3d-view"; status = "skipped"; durationMs = [int]((Get-Date)-$started).TotalMilliseconds; assertions = @(@{ name = "revitConnected"; passed = $false; message = "Revit JSON-RPC unavailable" }) } | ConvertTo-Json -Depth 10
   exit 0
 }
-$views = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName get_views | ConvertFrom-Json
+$views = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName get_views | ConvertFrom-Json
 $viewResult = $views.result
 $threeDView = @($viewResult.views | Where-Object { $_.viewType -eq "ThreeD" -or $_.viewType -eq "ThreeDimensional" } | Select-Object -First 1)
 $assertions = @(@{ name = "getViewsSucceeded"; passed = [bool]$views.success; message = "" })
 if ($threeDView.Count -gt 0) {
   $params = @{ viewId = [int]$threeDView[0].id } | ConvertTo-Json -Compress
-  $switch = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName switch_view -ParamsJson $params | ConvertFrom-Json
+  $switch = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName switch_view -ParamsJson $params | ConvertFrom-Json
   $assertions += @{ name = "switch3dViewSucceeded"; passed = [bool]$switch.success; message = "" }
 } else {
   $assertions += @{ name = "threeDViewAvailable"; passed = $false; message = "No 3D view exists; this exposes the view_missing workflow." }
@@ -337,7 +337,7 @@ $status = if (@($assertions | Where-Object { -not $_.passed }).Count -eq 0) { "p
 - [ ] **Step 5: Commit live evals**
 
 ```powershell
-git add tools/revit-harness/evals/live
+git add src/RevitHarness/evals/live
 git commit -m "feat: add live revit harness evals"
 ```
 
@@ -349,7 +349,7 @@ git commit -m "feat: add live revit harness evals"
 - [ ] **Step 1: Run technical evals**
 
 ```powershell
-$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\evals\run-evals.ps1' | ConvertFrom-Json
+$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\evals\run-evals.ps1' | ConvertFrom-Json
 $run.summary
 ```
 
@@ -358,7 +358,7 @@ Expected: `failed = 0`.
 - [ ] **Step 2: Run live evals with skip allowed**
 
 ```powershell
-$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\evals\run-evals.ps1' -IncludeLive | ConvertFrom-Json
+$run = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\evals\run-evals.ps1' -IncludeLive | ConvertFrom-Json
 $run.summary
 ```
 
@@ -367,7 +367,7 @@ Expected: technical evals pass. Live evals pass when Revit is available or skip 
 - [ ] **Step 3: Verify results were written**
 
 ```powershell
-Get-ChildItem 'tools/revit-harness/evals/results' -Filter '*.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+Get-ChildItem 'src/RevitHarness/evals/results' -Filter '*.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 ```
 
 Expected: one recent JSON result file.
@@ -375,6 +375,7 @@ Expected: one recent JSON result file.
 - [ ] **Step 4: Commit verification fixes if needed**
 
 ```powershell
-git add tools/revit-harness/evals
+git add src/RevitHarness/evals
 git commit -m "fix: stabilize revit harness evals"
 ```
+

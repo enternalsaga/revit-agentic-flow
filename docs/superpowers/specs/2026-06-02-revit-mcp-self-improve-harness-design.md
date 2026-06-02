@@ -1,4 +1,4 @@
-# Revit MCP Self-Improve Harness Design
+﻿# Revit MCP Self-Improve Harness Design
 
 ## Goal
 
@@ -207,7 +207,7 @@ Purpose: create a deterministic tooling layer that agents can call before and du
 
 #### Deliverables
 
-- `tools/revit-harness/`
+- `src/RevitHarness/`
   - `bootstrap.ps1` or `bootstrap.mjs`
   - `registry-report.ps1` or `registry-report.mjs`
   - `invoke-command.ps1` or `invoke-command.mjs`
@@ -358,12 +358,12 @@ Purpose: convert raw traces into actionable, repeatable improvement signals.
 
 #### Deliverables
 
-- `tools/revit-harness/classify-failure.*`
-- `tools/revit-harness/generate-lesson-candidates.*`
-- `tools/revit-harness/schemas/failure.schema.json`
-- `tools/revit-harness/schemas/lesson-candidate.schema.json`
-- `tools/revit-harness/fixtures/errors/`
-- `tools/revit-harness/fixtures/traces/`
+- `src/RevitHarness/classify-failure.*`
+- `src/RevitHarness/generate-lesson-candidates.*`
+- `src/RevitHarness/schemas/failure.schema.json`
+- `src/RevitHarness/schemas/lesson-candidate.schema.json`
+- `src/RevitHarness/fixtures/errors/`
+- `src/RevitHarness/fixtures/traces/`
 
 #### Failure Taxonomy
 
@@ -439,7 +439,7 @@ Candidate example:
   "frequency": 3,
   "generalizedLesson": "When invoking Revit JSON-RPC from PowerShell, pass params through a JSON file instead of inline shell-quoted JSON.",
   "recommendedPatchTargets": [
-    "tools/revit-harness/invoke-command.ps1",
+    "src/RevitHarness/invoke-command.ps1",
     ".agents/skills/run-revit-mcp/SKILL.md"
   ],
   "requiresHumanApproval": true
@@ -543,7 +543,7 @@ Purpose: make future MCP_Revit self-improvement measurable before changing skill
 
 #### Deliverables
 
-- `tools/revit-harness/evals/`
+- `src/RevitHarness/evals/`
   - `eval-bootstrap.*`
   - `eval-registry-report.*`
   - `eval-invoke-command.*`
@@ -553,9 +553,9 @@ Purpose: make future MCP_Revit self-improvement measurable before changing skill
   - `live/eval-create-basic-building.*`
   - `live/eval-create-or-switch-3d-view.*`
   - `live/eval-snapshot-statistics.*`
-- `tools/revit-harness/evals/fixtures/`
-- `tools/revit-harness/evals/results/`
-- `tools/revit-harness/evals/run-evals.*`
+- `src/RevitHarness/evals/fixtures/`
+- `src/RevitHarness/evals/results/`
+- `src/RevitHarness/evals/run-evals.*`
 
 #### Eval Types
 
@@ -642,35 +642,35 @@ Before approving any future self-improvement patch:
 ### Recommended File Layout
 
 ```text
-tools/revit-harness/
-├── README.md
-├── bootstrap.ps1
-├── registry-report.ps1
-├── invoke-command.ps1
-├── trace-writer.ps1
-├── classify-failure.ps1
-├── generate-lesson-candidates.ps1
-├── schemas/
-│   ├── bootstrap.schema.json
-│   ├── command-result.schema.json
-│   ├── trace.schema.json
-│   ├── failure.schema.json
-│   └── lesson-candidate.schema.json
-├── fixtures/
-│   ├── errors/
-│   └── traces/
-└── evals/
-    ├── run-evals.ps1
-    ├── eval-bootstrap.ps1
-    ├── eval-registry-report.ps1
-    ├── eval-invoke-command.ps1
-    ├── eval-failure-classifier.ps1
-    ├── eval-trace-writer.ps1
-    └── live/
-        ├── eval-create-levels-grids.ps1
-        ├── eval-create-basic-building.ps1
-        ├── eval-create-or-switch-3d-view.ps1
-        └── eval-snapshot-statistics.ps1
+src/RevitHarness/
+â”œâ”€â”€ README.md
+â”œâ”€â”€ bootstrap.ps1
+â”œâ”€â”€ registry-report.ps1
+â”œâ”€â”€ invoke-command.ps1
+â”œâ”€â”€ trace-writer.ps1
+â”œâ”€â”€ classify-failure.ps1
+â”œâ”€â”€ generate-lesson-candidates.ps1
+â”œâ”€â”€ schemas/
+â”‚   â”œâ”€â”€ bootstrap.schema.json
+â”‚   â”œâ”€â”€ command-result.schema.json
+â”‚   â”œâ”€â”€ trace.schema.json
+â”‚   â”œâ”€â”€ failure.schema.json
+â”‚   â””â”€â”€ lesson-candidate.schema.json
+â”œâ”€â”€ fixtures/
+â”‚   â”œâ”€â”€ errors/
+â”‚   â””â”€â”€ traces/
+â””â”€â”€ evals/
+    â”œâ”€â”€ run-evals.ps1
+    â”œâ”€â”€ eval-bootstrap.ps1
+    â”œâ”€â”€ eval-registry-report.ps1
+    â”œâ”€â”€ eval-invoke-command.ps1
+    â”œâ”€â”€ eval-failure-classifier.ps1
+    â”œâ”€â”€ eval-trace-writer.ps1
+    â””â”€â”€ live/
+        â”œâ”€â”€ eval-create-levels-grids.ps1
+        â”œâ”€â”€ eval-create-basic-building.ps1
+        â”œâ”€â”€ eval-create-or-switch-3d-view.ps1
+        â””â”€â”€ eval-snapshot-statistics.ps1
 ```
 
 Use PowerShell first because this project already uses PowerShell for Revit bridge workflows and the target environment is Windows. Node can be introduced later if schema validation or reporting becomes cleaner there.
@@ -679,21 +679,21 @@ Use PowerShell first because this project already uses PowerShell for Revit brid
 
 ```text
 .revit-harness/
-├── runs/
-│   └── 20260602_120000_create-townhouse/
-│       ├── trace.json
-│       ├── bootstrap.json
-│       ├── commands/
-│       │   ├── 001_get_project_info.json
-│       │   └── 002_create_level.json
-│       └── snapshots/
-├── cache/
-│   └── last-bootstrap.json
-└── lesson-candidates/
-    └── 20260602_120500_json_quoting.json
+â”œâ”€â”€ runs/
+â”‚   â””â”€â”€ 20260602_120000_create-townhouse/
+â”‚       â”œâ”€â”€ trace.json
+â”‚       â”œâ”€â”€ bootstrap.json
+â”‚       â”œâ”€â”€ commands/
+â”‚       â”‚   â”œâ”€â”€ 001_get_project_info.json
+â”‚       â”‚   â””â”€â”€ 002_create_level.json
+â”‚       â””â”€â”€ snapshots/
+â”œâ”€â”€ cache/
+â”‚   â””â”€â”€ last-bootstrap.json
+â””â”€â”€ lesson-candidates/
+    â””â”€â”€ 20260602_120500_json_quoting.json
 ```
 
-Runtime output should be ignored by git unless a specific fixture is intentionally copied into `tools/revit-harness/fixtures/`.
+Runtime output should be ignored by git unless a specific fixture is intentionally copied into `src/RevitHarness/fixtures/`.
 
 ### Security and Data Hygiene
 
@@ -733,3 +733,4 @@ The full harness is complete when:
 ## Recommended First Milestone
 
 Build Phase 1 with PowerShell or Node scripts first, because the immediate failures are transport, quoting, discovery, and trace capture. Keep the first milestone independent from Revit command implementation changes so it can improve debugging before deeper refactors.
+

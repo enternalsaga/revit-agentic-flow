@@ -1,4 +1,4 @@
-# Revit Harness Phase 2 Classification Implementation Plan
+﻿# Revit Harness Phase 2 Classification Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -12,18 +12,18 @@
 
 ## File Structure
 
-- Create: `tools/revit-harness/classify-failure.ps1` - classify one error or trace.
-- Create: `tools/revit-harness/generate-lesson-candidates.ps1` - aggregate traces into candidate lessons.
-- Create: `tools/revit-harness/schemas/failure.schema.json` - classifier output contract.
-- Create: `tools/revit-harness/schemas/lesson-candidate.schema.json` - lesson candidate contract.
-- Create: `tools/revit-harness/fixtures/errors/*.json` - category fixtures.
-- Create: `tools/revit-harness/fixtures/traces/*.json` - trace fixtures for candidate generation.
+- Create: `src/RevitHarness/classify-failure.ps1` - classify one error or trace.
+- Create: `src/RevitHarness/generate-lesson-candidates.ps1` - aggregate traces into candidate lessons.
+- Create: `src/RevitHarness/schemas/failure.schema.json` - classifier output contract.
+- Create: `src/RevitHarness/schemas/lesson-candidate.schema.json` - lesson candidate contract.
+- Create: `src/RevitHarness/fixtures/errors/*.json` - category fixtures.
+- Create: `src/RevitHarness/fixtures/traces/*.json` - trace fixtures for candidate generation.
 
 ### Task 1: Add Failure and Lesson Schemas
 
 **Files:**
-- Create: `tools/revit-harness/schemas/failure.schema.json`
-- Create: `tools/revit-harness/schemas/lesson-candidate.schema.json`
+- Create: `src/RevitHarness/schemas/failure.schema.json`
+- Create: `src/RevitHarness/schemas/lesson-candidate.schema.json`
 
 - [ ] **Step 1: Create failure schema**
 
@@ -83,23 +83,23 @@
 - [ ] **Step 3: Commit**
 
 ```powershell
-git add tools/revit-harness/schemas/failure.schema.json tools/revit-harness/schemas/lesson-candidate.schema.json
+git add src/RevitHarness/schemas/failure.schema.json src/RevitHarness/schemas/lesson-candidate.schema.json
 git commit -m "feat: add revit harness classification schemas"
 ```
 
 ### Task 2: Add Error Fixtures
 
 **Files:**
-- Create: `tools/revit-harness/fixtures/errors/json_quoting.json`
-- Create: `tools/revit-harness/fixtures/errors/command_not_registered.json`
-- Create: `tools/revit-harness/fixtures/errors/invalid_geometry.json`
-- Create: `tools/revit-harness/fixtures/errors/view_missing.json`
-- Create: `tools/revit-harness/fixtures/errors/verification_gap.json`
+- Create: `src/RevitHarness/fixtures/errors/json_quoting.json`
+- Create: `src/RevitHarness/fixtures/errors/command_not_registered.json`
+- Create: `src/RevitHarness/fixtures/errors/invalid_geometry.json`
+- Create: `src/RevitHarness/fixtures/errors/view_missing.json`
+- Create: `src/RevitHarness/fixtures/errors/verification_gap.json`
 
 - [ ] **Step 1: Create fixture directory**
 
 ```powershell
-New-Item -ItemType Directory -Force 'tools/revit-harness/fixtures/errors' | Out-Null
+New-Item -ItemType Directory -Force 'src/RevitHarness/fixtures/errors' | Out-Null
 ```
 
 - [ ] **Step 2: Add fixtures**
@@ -177,19 +177,19 @@ Create `verification_gap.json`:
 - [ ] **Step 3: Commit**
 
 ```powershell
-git add tools/revit-harness/fixtures/errors
+git add src/RevitHarness/fixtures/errors
 git commit -m "test: add revit harness failure fixtures"
 ```
 
 ### Task 3: Implement Failure Classifier
 
 **Files:**
-- Create: `tools/revit-harness/classify-failure.ps1`
+- Create: `src/RevitHarness/classify-failure.ps1`
 
 - [ ] **Step 1: Run failing classifier command**
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\classify-failure.ps1' -InputPath '.\tools\revit-harness\fixtures\errors\json_quoting.json'
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\classify-failure.ps1' -InputPath '.\src\\RevitHarness\fixtures\errors\json_quoting.json'
 ```
 
 Expected: FAIL because script does not exist.
@@ -223,12 +223,12 @@ function New-Classification {
 }
 
 if ($text -match 'Invalid JSON primitive|ConvertFrom-Json|Invalid object passed in') {
-    New-Classification "json_quoting" 0.95 @("Input contains PowerShell JSON parsing failure.") "Pass params through invoke-command.ps1 using JSON file or canonical JSON." @("tools/revit-harness/invoke-command.ps1", ".agents/skills/run-revit-mcp/SKILL.md") | ConvertTo-Json -Depth 10
+    New-Classification "json_quoting" 0.95 @("Input contains PowerShell JSON parsing failure.") "Pass params through invoke-command.ps1 using JSON file or canonical JSON." @("src/RevitHarness/invoke-command.ps1", ".agents/skills/run-revit-mcp/SKILL.md") | ConvertTo-Json -Depth 10
     exit 0
 }
 
 if ($text -match 'Method .* not found|-32601') {
-    New-Classification "command_not_registered" 0.92 @("Runtime bridge reported method not found.") "Run bootstrap and registry report to detect stale runtime or missing command registration." @("tools/revit-harness/bootstrap.ps1", "mcp-servers-for-revit/command.json") | ConvertTo-Json -Depth 10
+    New-Classification "command_not_registered" 0.92 @("Runtime bridge reported method not found.") "Run bootstrap and registry report to detect stale runtime or missing command registration." @("src/RevitHarness/bootstrap.ps1", "mcp-servers-for-revit/command.json") | ConvertTo-Json -Depth 10
     exit 0
 }
 
@@ -238,12 +238,12 @@ if ($text -match 'created 0 .*roof|not created by pick walls|invalid geometry') 
 }
 
 if ($text -match 'View not found') {
-    New-Classification "view_missing" 0.9 @("Requested view does not exist in the active model.") "Create or discover a valid 3D view before switching, or snapshot the current view and report the limitation." @("mcp-servers-for-revit/commandset/Services/SwitchViewEventHandler.cs", "tools/revit-harness/evals/live/eval-create-or-switch-3d-view.ps1") | ConvertTo-Json -Depth 10
+    New-Classification "view_missing" 0.9 @("Requested view does not exist in the active model.") "Create or discover a valid 3D view before switching, or snapshot the current view and report the limitation." @("mcp-servers-for-revit/commandset/Services/SwitchViewEventHandler.cs", "src/RevitHarness/evals/live/eval-create-or-switch-3d-view.ps1") | ConvertTo-Json -Depth 10
     exit 0
 }
 
 if ($text -match '"finalStatus"\s*:\s*"completed"' -and $text -match '"snapshots"\s*:\s*\[\]' -and $text -match '"modelStatistics"\s*:\s*null') {
-    New-Classification "verification_gap" 0.86 @("Trace completed without snapshot or model statistics.") "Run snapshot, statistics, and warnings check before final reporting." @(".agents/skills/run-revit-mcp/SKILL.md", "tools/revit-harness/trace-writer.ps1") | ConvertTo-Json -Depth 10
+    New-Classification "verification_gap" 0.86 @("Trace completed without snapshot or model statistics.") "Run snapshot, statistics, and warnings check before final reporting." @(".agents/skills/run-revit-mcp/SKILL.md", "src/RevitHarness/trace-writer.ps1") | ConvertTo-Json -Depth 10
     exit 0
 }
 
@@ -253,9 +253,9 @@ New-Classification "unknown" 0.2 @("No deterministic classifier rule matched.") 
 - [ ] **Step 3: Test known fixtures**
 
 ```powershell
-$fixtures = Get-ChildItem 'tools/revit-harness/fixtures/errors/*.json'
+$fixtures = Get-ChildItem 'src/RevitHarness/fixtures/errors/*.json'
 foreach ($fixture in $fixtures) {
-  $result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\classify-failure.ps1' -InputPath $fixture.FullName | ConvertFrom-Json
+  $result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\classify-failure.ps1' -InputPath $fixture.FullName | ConvertFrom-Json
   "$($fixture.BaseName) => $($result.category)"
 }
 ```
@@ -273,16 +273,16 @@ view_missing => view_missing
 - [ ] **Step 4: Commit**
 
 ```powershell
-git add tools/revit-harness/classify-failure.ps1
+git add src/RevitHarness/classify-failure.ps1
 git commit -m "feat: add revit harness failure classifier"
 ```
 
 ### Task 4: Implement Lesson Candidate Generator
 
 **Files:**
-- Create: `tools/revit-harness/generate-lesson-candidates.ps1`
-- Create: `tools/revit-harness/fixtures/traces/repeated_json_quoting_1.json`
-- Create: `tools/revit-harness/fixtures/traces/repeated_json_quoting_2.json`
+- Create: `src/RevitHarness/generate-lesson-candidates.ps1`
+- Create: `src/RevitHarness/fixtures/traces/repeated_json_quoting_1.json`
+- Create: `src/RevitHarness/fixtures/traces/repeated_json_quoting_2.json`
 
 - [ ] **Step 1: Add repeated trace fixtures**
 
@@ -301,7 +301,7 @@ Create both fixture files with this structure, changing only `runId`:
       "confidence": 0.95,
       "evidence": ["Input contains PowerShell JSON parsing failure."],
       "suggestedNextAction": "Pass params through invoke-command.ps1 using JSON file or canonical JSON.",
-      "patchTargets": ["tools/revit-harness/invoke-command.ps1"]
+      "patchTargets": ["src/RevitHarness/invoke-command.ps1"]
     }
   ],
   "finalStatus": "failed"
@@ -312,7 +312,7 @@ Create both fixture files with this structure, changing only `runId`:
 
 ```powershell
 param(
-    [string]$TraceDirectory = "tools/revit-harness/fixtures/traces",
+    [string]$TraceDirectory = "src/RevitHarness/fixtures/traces",
     [string]$OutputDirectory = ".revit-harness/lesson-candidates",
     [int]$MinimumFrequency = 2
 )
@@ -370,7 +370,7 @@ foreach ($category in $groups.Keys) {
 - [ ] **Step 3: Test candidate generation**
 
 ```powershell
-$result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\generate-lesson-candidates.ps1' -TraceDirectory 'tools/revit-harness/fixtures/traces' -OutputDirectory '.revit-harness/lesson-candidates-test' | ConvertFrom-Json
+$result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\generate-lesson-candidates.ps1' -TraceDirectory 'src/RevitHarness/fixtures/traces' -OutputDirectory '.revit-harness/lesson-candidates-test' | ConvertFrom-Json
 $result.createdCount
 ```
 
@@ -379,7 +379,7 @@ Expected: `1`.
 - [ ] **Step 4: Commit**
 
 ```powershell
-git add tools/revit-harness/generate-lesson-candidates.ps1 tools/revit-harness/fixtures/traces
+git add src/RevitHarness/generate-lesson-candidates.ps1 src/RevitHarness/fixtures/traces
 git commit -m "feat: add revit harness lesson candidate generator"
 ```
 
@@ -399,7 +399,7 @@ $expected = @{
   "verification_gap" = "verification_gap"
 }
 foreach ($name in $expected.Keys) {
-  $result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\classify-failure.ps1' -InputPath "tools/revit-harness/fixtures/errors/$name.json" | ConvertFrom-Json
+  $result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\classify-failure.ps1' -InputPath "src/RevitHarness/fixtures/errors/$name.json" | ConvertFrom-Json
   if ($result.category -ne $expected[$name]) { throw "$name classified as $($result.category)" }
 }
 "PASS"
@@ -411,7 +411,7 @@ Expected: `PASS`.
 
 ```powershell
 Remove-Item -Recurse -Force '.revit-harness/lesson-candidates-test' -ErrorAction SilentlyContinue
-$result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\generate-lesson-candidates.ps1' -TraceDirectory 'tools/revit-harness/fixtures/traces' -OutputDirectory '.revit-harness/lesson-candidates-test' | ConvertFrom-Json
+$result = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\generate-lesson-candidates.ps1' -TraceDirectory 'src/RevitHarness/fixtures/traces' -OutputDirectory '.revit-harness/lesson-candidates-test' | ConvertFrom-Json
 if ($result.createdCount -ne 1) { throw "Expected 1 candidate" }
 "PASS"
 ```
@@ -423,7 +423,8 @@ Expected: `PASS`.
 If fixes were needed:
 
 ```powershell
-git add tools/revit-harness
+git add src/RevitHarness
 git commit -m "fix: stabilize revit harness classification"
 ```
+
 

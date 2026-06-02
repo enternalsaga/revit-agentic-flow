@@ -1,4 +1,4 @@
-# Revit Harness Phase 3 Skill Integration Implementation Plan
+﻿# Revit Harness Phase 3 Skill Integration Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -108,9 +108,9 @@ Use this reference only when direct MCP tools are unavailable, stale, or fail wi
 
 ## Runtime Discovery Order
 
-1. Run `tools/revit-harness/bootstrap.ps1`.
+1. Run `src/RevitHarness/bootstrap.ps1`.
 2. Prefer direct MCP tools exposed to the agent.
-3. If direct MCP discovery is stale but Revit runtime has the command, call `tools/revit-harness/invoke-command.ps1`.
+3. If direct MCP discovery is stale but Revit runtime has the command, call `src/RevitHarness/invoke-command.ps1`.
 4. Use compiled helper DLL flow only for large C# payloads or custom geometry.
 5. Use inline `send_code_to_revit` only when the command wrapper and compiled helper flow are inappropriate.
 
@@ -124,7 +124,7 @@ Example:
 $params = @{ data = @(@{ name = "L1"; elevation = 0 }) } | ConvertTo-Json -Depth 10
 $paramsPath = New-TemporaryFile
 Set-Content -Path $paramsPath.FullName -Value $params -Encoding UTF8
-powershell -NoProfile -ExecutionPolicy Bypass -File '.\tools\revit-harness\invoke-command.ps1' -CommandName create_level -ParamsPath $paramsPath.FullName
+powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\\RevitHarness\invoke-command.ps1' -CommandName create_level -ParamsPath $paramsPath.FullName
 ```
 
 ## Compiled Helper Flow
@@ -168,7 +168,7 @@ Use this reference when a command fails, retries, falls back, or verification is
 | `skill_gap` | Agent selected wrong tool or skipped required step | Propose skill update |
 | `verification_gap` | No snapshot/statistics/warnings after modeling | Run verification before final report |
 
-Classify through `tools/revit-harness/classify-failure.ps1` when Phase 2 harness is available.
+Classify through `src/RevitHarness/classify-failure.ps1` when Phase 2 harness is available.
 ```
 
 - [ ] **Step 2: Create `verification-checklist.md`**
@@ -228,13 +228,13 @@ Insert this section after "Map to MCP Tools":
 Before executing or planning fallback calls, run:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\revit-harness\bootstrap.ps1 -WriteCache
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\\RevitHarness\bootstrap.ps1 -WriteCache
 ```
 
 Use the bootstrap report as runtime truth:
 
 - If direct MCP tools are visible, prefer them.
-- If direct MCP discovery is stale but JSON-RPC is available, use `tools/revit-harness/invoke-command.ps1`.
+- If direct MCP discovery is stale but JSON-RPC is available, use `src/RevitHarness/invoke-command.ps1`.
 - If no transport is available, stop and report that Revit/plugin is not connected.
 - If a command fails, save or update a trace and classify the failure when the classifier exists.
 ```
@@ -259,7 +259,7 @@ Load references only when needed:
 Find long JSON-RPC fallback examples and replace the block with:
 
 ```markdown
-For JSON-RPC fallback and compiled helper flow, use `references/fallbacks.md`. Do not hand-write shell-quoted JSON when `tools/revit-harness/invoke-command.ps1` is available.
+For JSON-RPC fallback and compiled helper flow, use `references/fallbacks.md`. Do not hand-write shell-quoted JSON when `src/RevitHarness/invoke-command.ps1` is available.
 ```
 
 - [ ] **Step 5: Verify skill still mentions dedicated tools first**
@@ -289,19 +289,19 @@ git commit -m "docs: integrate revit harness into modeling skill"
 Add this after the Revit connection check:
 
 ```markdown
-## Bước 2b: Kiểm tra Revit Harness
+## BÆ°á»›c 2b: Kiá»ƒm tra Revit Harness
 
-Chạy:
+Cháº¡y:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\revit-harness\bootstrap.ps1 -WriteCache
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\\RevitHarness\bootstrap.ps1 -WriteCache
 ```
 
-Báo cáo ngắn:
+BÃ¡o cÃ¡o ngáº¯n:
 
-- Transport khả dụng.
-- Số command manifest/tool wrapper.
-- Drift hoặc stale session nếu có.
+- Transport kháº£ dá»¥ng.
+- Sá»‘ command manifest/tool wrapper.
+- Drift hoáº·c stale session náº¿u cÃ³.
 ```
 
 - [ ] **Step 2: Verify workflow references harness**
@@ -353,4 +353,5 @@ Expected: `PASS`.
 git add .agents/skills/run-revit-mcp .agents/workflows/start.md
 git commit -m "fix: stabilize revit harness skill integration"
 ```
+
 
