@@ -3,8 +3,7 @@ param(
     [string]$ParamsJson = "{}",
     [string]$ParamsPath = "",
     [ValidateSet("auto", "jsonrpc")][string]$Transport = "auto",
-    [int]$TimeoutSeconds = 120,
-    [string]$TraceRunId = ""
+    [int]$TimeoutSeconds = 120
 )
 
 $ErrorActionPreference = "Stop"
@@ -54,10 +53,10 @@ try {
     Set-Content -Path $tempParams.FullName -Value $canonicalParams -Encoding UTF8
 
     $job = Start-Job -ScriptBlock {
-        param($scriptPath, $method, $paramsFile)
+        param($scriptPath, $method, $paramsFile, $timeoutSeconds)
         $json = Get-Content -Path $paramsFile -Raw
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Method $method -ParamsJson $json
-    } -ArgumentList $bridgeScript, $CommandName, $tempParams.FullName
+        & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Method $method -ParamsJson $json -TimeoutSeconds $timeoutSeconds
+    } -ArgumentList $bridgeScript, $CommandName, $tempParams.FullName, $TimeoutSeconds
 
     if (-not (Wait-Job $job -Timeout $TimeoutSeconds)) {
         Stop-Job $job
@@ -65,8 +64,6 @@ try {
     }
 
     $output = Receive-Job $job -ErrorAction Stop
-    Remove-Job $job
-    Remove-Item -LiteralPath $tempParams.FullName -Force
 
     $duration = [int]((Get-Date) - $started).TotalMilliseconds
     [ordered]@{
@@ -96,4 +93,11 @@ try {
         }
     } | ConvertTo-Json -Depth 20
     exit 1
+} finally {
+    if ($job) {
+        Remove-Job $job -Force -ErrorAction SilentlyContinue
+    }
+    if ($tempParams -and (Test-Path $tempParams.FullName)) {
+        Remove-Item -LiteralPath $tempParams.FullName -Force -ErrorAction SilentlyContinue
+    }
 }

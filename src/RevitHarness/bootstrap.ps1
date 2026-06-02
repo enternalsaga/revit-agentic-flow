@@ -4,8 +4,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$registryScript = Join-Path $WorkspaceRoot "tools/revit-harness/registry-report.ps1"
-$invokeScript = Join-Path $WorkspaceRoot "tools/revit-harness/invoke-command.ps1"
+$registryScript = Join-Path $WorkspaceRoot "src/RevitHarness/registry-report.ps1"
+$invokeScript = Join-Path $WorkspaceRoot "src/RevitHarness/invoke-command.ps1"
 
 $registry = powershell -NoProfile -ExecutionPolicy Bypass -File $registryScript -WorkspaceRoot $WorkspaceRoot | ConvertFrom-Json
 

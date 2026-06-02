@@ -12,6 +12,7 @@ model/*.dll
 /model
 /.claude/skills/revit-api-reference/data
 /.claude
+.env
 
 # Revit harness runtime output
 .revit-harness/runs/

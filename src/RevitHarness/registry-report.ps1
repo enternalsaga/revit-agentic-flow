@@ -83,11 +83,11 @@ $report = [ordered]@{
         runtimeRegisteredCommands = $null
     }
     coverageGaps = [ordered]@{
-        manifest_without_typescript_tool = Compare-Layers $manifestCommands $typescriptTools
-        manifest_without_csharp_wrapper = Compare-Layers $manifestCommands $csharpMcpTools
-        manifest_without_commandset_implementation = Compare-Layers $manifestCommands $commandsetImplementations
-        typescript_tool_without_manifest = Compare-Layers $typescriptTools $manifestCommands
-        csharp_wrapper_without_manifest = Compare-Layers $csharpMcpTools $manifestCommands
+        manifest_without_typescript_tool = [object[]]@(Compare-Layers $manifestCommands $typescriptTools)
+        manifest_without_csharp_wrapper = [object[]]@(Compare-Layers $manifestCommands $csharpMcpTools)
+        manifest_without_commandset_implementation = [object[]]@(Compare-Layers $manifestCommands $commandsetImplementations)
+        typescript_tool_without_manifest = [object[]]@(Compare-Layers $typescriptTools $manifestCommands)
+        csharp_wrapper_without_manifest = [object[]]@(Compare-Layers $csharpMcpTools $manifestCommands)
         runtime_missing_manifest_command = $null
         runtime_extra_command = $null
     }

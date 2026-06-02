@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "generatedAtUtc": "2026-01-01T00:00:00.0000000Z",
+  "workspaceRoot": "<workspace-root>",
+  "transports": {
+    "phase1Pipe": "unknown",
+    "legacyJsonRpc": "unavailable"
+  },
+  "projectInfo": null,
+  "registry": {
+    "success": true,
+    "workspaceRoot": "<workspace-root>",
+    "generatedAtUtc": "2026-01-01T00:00:00.0000000Z",
+    "manifestCommands": [
+      "get_project_info",
+      "say_hello"
+    ],
+    "typescriptTools": [
+      "get_project_info",
+      "say_hello"
+    ],
+    "csharpMcpTools": [
+      "get_project_info",
+      "say_hello"
+    ],
+    "commandsetImplementations": [
+      "get_project_info",
+      "say_hello"
+    ],
+    "runtimeRegisteredCommands": null,
+    "counts": {
+      "manifest": 2,
+      "typescriptTools": 2,
+      "csharpMcpTools": 2,
+      "commandsetImplementations": 2,
+      "runtimeRegisteredCommands": null
+    },
+    "coverageGaps": {
+      "manifest_without_typescript_tool": [],
+      "manifest_without_csharp_wrapper": [],
+      "manifest_without_commandset_implementation": [],
+      "typescript_tool_without_manifest": [],
+      "csharp_wrapper_without_manifest": [],
+      "runtime_missing_manifest_command": null,
+      "runtime_extra_command": null
+    }
+  },
+  "guidance": [
+    "Open Revit and ensure the MCP plugin is loaded before live command execution."
+  ]
+}
