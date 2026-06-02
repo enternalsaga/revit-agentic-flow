@@ -10,8 +10,14 @@ $threeDView = @($viewResult.views | Where-Object { $_.viewType -eq "ThreeD" -or 
 $assertions = @(@{ name = "getViewsSucceeded"; passed = [bool]$views.success; message = "" })
 if ($threeDView.Count -gt 0) {
   $params = @{ viewId = [int]$threeDView[0].id } | ConvertTo-Json -Compress
-  $switch = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\RevitHarness\invoke-command.ps1' -CommandName switch_view -ParamsJson $params | ConvertFrom-Json
-  $assertions += @{ name = "switch3dViewSucceeded"; passed = [bool]$switch.success; message = "" }
+  $paramsPath = New-TemporaryFile
+  try {
+    Set-Content -Path $paramsPath.FullName -Value $params -Encoding UTF8
+    $switch = powershell -NoProfile -ExecutionPolicy Bypass -File '.\src\RevitHarness\invoke-command.ps1' -CommandName switch_view -ParamsPath $paramsPath.FullName | ConvertFrom-Json
+  } finally {
+    Remove-Item -LiteralPath $paramsPath.FullName -Force -ErrorAction SilentlyContinue
+  }
+  $assertions += @{ name = "switch3dViewSucceeded"; passed = [bool]$switch.success; message = $switch.error.message }
 } else {
   $assertions += @{ name = "threeDViewAvailable"; passed = $false; message = "No 3D view exists; this exposes the view_missing workflow." }
 }

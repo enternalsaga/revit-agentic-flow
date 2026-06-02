@@ -196,7 +196,13 @@ param(
 $ErrorActionPreference = "Stop"
 $invoke = Join-Path (Resolve-Path ".").Path "src/RevitHarness/invoke-command.ps1"
 $params = @{ viewName = $ViewName; detailLevel = "Fine"; activate = $true } | ConvertTo-Json -Compress
-$result = powershell -NoProfile -ExecutionPolicy Bypass -File $invoke -CommandName switch_or_create_3d_view -ParamsJson $params | ConvertFrom-Json
+$paramsPath = New-TemporaryFile
+try {
+    Set-Content -Path $paramsPath.FullName -Value $params -Encoding UTF8
+    $result = powershell -NoProfile -ExecutionPolicy Bypass -File $invoke -CommandName switch_or_create_3d_view -ParamsPath $paramsPath.FullName | ConvertFrom-Json
+} finally {
+    Remove-Item -LiteralPath $paramsPath.FullName -Force -ErrorAction SilentlyContinue
+}
 
 if (-not $result.success) {
     throw "switch_or_create_3d_view failed: $($result.error.message)"

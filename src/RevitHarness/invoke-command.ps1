@@ -55,7 +55,7 @@ try {
     $job = Start-Job -ScriptBlock {
         param($scriptPath, $method, $paramsFile, $timeoutSeconds)
         $json = Get-Content -Path $paramsFile -Raw
-        & powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Method $method -ParamsJson $json -TimeoutSeconds $timeoutSeconds
+        powershell -NoProfile -ExecutionPolicy Bypass -File $scriptPath -Method $method -ParamsJson $json -TimeoutSeconds $timeoutSeconds
     } -ArgumentList $bridgeScript, $CommandName, $tempParams.FullName, $TimeoutSeconds
 
     if (-not (Wait-Job $job -Timeout $TimeoutSeconds)) {

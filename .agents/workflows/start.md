@@ -26,13 +26,13 @@ Gọi MCP tool: say_hello (message: "Connection test")
 - Nếu lỗi → thông báo: "⚠️ Đã sẵn sàng. Revit chưa kết nối — hãy mở Revit và đảm bảo plugin MCP đã load."
 
 ## Bước 2b: Kiểm tra Revit Harness
-
+ 
 Chạy:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache
+ 
+```batch
+.\harness check
 ```
-
+ 
 Báo cáo ngắn:
 
 - Transport khả dụng.

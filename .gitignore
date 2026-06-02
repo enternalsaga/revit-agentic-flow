@@ -4,6 +4,8 @@
 .agents/skills/*
 !.agents/skills/run-revit-mcp/
 !.agents/skills/run-revit-mcp/**
+!.agents/workflows/
+!.agents/workflows/**
 model/build/
 model/*.dll
 /.samples

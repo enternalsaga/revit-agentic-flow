@@ -1,4 +1,4 @@
-﻿# Revit MCP Self-Improve Harness Design
+# Revit MCP Self-Improve Harness Design
 
 ## Goal
 
@@ -862,50 +862,197 @@ When a missing command is detected during execution:
 - Command creation can interrupt a modeling session. Mitigation: default mode is `propose`; implementation is a separate workflow.
 - Source-level registry can pass while runtime remains stale. Mitigation: report source-ready and runtime-ready as separate statuses.
 
+### Phase 6: CLI Wrapper and Workflow Orchestrator
+
+Purpose: eliminate long PowerShell invocation paths by providing a single entry-point CLI and an agent-invokable workflow, so both humans and agents interact with the harness through short, memorable subcommands.
+
+#### Problem Statement
+
+The research plan identifies that harness scripts exist but are inaccessible:
+
+- Users must type `powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache` to run a simple health check.
+- Agents must construct these paths from memory or documentation, increasing error rate.
+- No workflow exists for agents to orchestrate multi-step harness operations (e.g., "check everything", "run evals then classify failures").
+- The `/start` workflow calls bootstrap but ignores registry, evals, and gap detection.
+
+#### Deliverables
+
+- `harness.bat` at project root — batch wrapper dispatching to PowerShell scripts via subcommands.
+- `.agents/workflows/harness.md` — agent workflow for `/harness` invocation.
+- Updated `README.md` — replace all long PowerShell paths with short `.\harness <command>` syntax.
+- Updated `.agents/workflows/start.md` — replace inline bootstrap call with `.\harness check`.
+
+#### CLI Contract (`harness.bat`)
+
+The CLI must support these subcommands:
+
+| Subcommand | Maps to | Description |
+|---|---|---|
+| `check` | `bootstrap.ps1 -WriteCache` | Check transport & command state |
+| `registry` | `registry-report.ps1` | Full command coverage audit |
+| `invoke <name> [params]` | `invoke-command.ps1` | Call a Revit command safely |
+| `classify <error-file>` | `classify-failure.ps1` | Classify an error |
+| `trace new <label>` | `trace-writer.ps1 -Mode new` | Start a new trace |
+| `trace append <runId> <file>` | `trace-writer.ps1 -Mode append-command` | Append command result |
+| `trace finalize <runId> <status>` | `trace-writer.ps1 -Mode finalize` | Finalize trace |
+| `evals` | `evals/run-evals.ps1` | Run offline evals |
+| `evals --live` | `evals/run-evals.ps1 -IncludeLive` | Run all evals including live |
+| `gap detect <trace>` | `detect-command-gap.ps1` | Detect command gaps |
+| `gap propose <gap-file>` | `generate-command-proposal.ps1` | Generate proposal |
+| `gap validate <proposal>` | `validate-command-proposal.ps1` | Validate proposal |
+| `gap scaffold <proposal> [--dry-run]` | `scaffold-command.ps1` | Scaffold command |
+| `help` | — | Show available subcommands |
+
+Invocation examples:
+
+```batch
+.\harness check
+.\harness registry
+.\harness invoke get_project_info
+.\harness invoke create_level --params-file .\params.json --timeout 60
+.\harness classify .\error.json
+.\harness evals
+.\harness evals --live
+.\harness gap detect .revit-harness\runs\<run_id>\trace.json
+.\harness gap propose .revit-harness\command-gaps\<gap_id>.json
+.\harness gap scaffold .revit-harness\command-proposals\<id>.json --dry-run
+.\harness help
+```
+
+Exit codes:
+
+- `0`: success.
+- `1`: script-level failure (transport unavailable, classification error).
+- `2`: invalid subcommand or missing arguments.
+
+The wrapper must:
+
+- Set `-NoProfile -ExecutionPolicy Bypass` automatically.
+- Forward all stdout/stderr from the underlying PowerShell script.
+- Not require any PATH configuration beyond having PowerShell available.
+- Work from the project root directory.
+
+#### Workflow Contract (`.agents/workflows/harness.md`)
+
+The workflow enables agents to invoke harness operations via `/harness` or when they detect a harness-related need.
+
+Supported modes:
+
+| Agent says | Workflow does |
+|---|---|
+| `/harness` or `/harness check` | Run `.\harness check`, report results |
+| `/harness registry` | Run `.\harness registry`, summarize gaps |
+| `/harness evals` | Run `.\harness evals`, report pass/fail |
+| `/harness evals --live` | Run `.\harness evals --live`, report results |
+| `/harness classify <file>` | Run classifier, explain category and suggested fix |
+| `/harness gap <trace>` | Run detect → propose pipeline, present proposal for review |
+| `/harness full` | Run check → registry → evals sequence, comprehensive report |
+
+The workflow must:
+
+- Use `// turbo-all` annotation so all commands auto-run.
+- Parse JSON output and present human-readable summaries.
+- Not require the user to type PowerShell paths.
+- Include error handling: if `.\harness` is not found, guide user to check they are in the project root.
+
+#### README Update Contract
+
+After Phase 6, README Section 4 must use only short CLI commands:
+
+Before:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache
+```
+
+After:
+```batch
+.\harness check
+```
+
+Every code block in Section 4 must use `.\harness <subcommand>` syntax. No raw PowerShell invocation paths in the README.
+
+#### `/start` Workflow Update
+
+Replace line:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\src\RevitHarness\bootstrap.ps1 -WriteCache
+```
+
+With:
+```batch
+.\harness check
+```
+
+#### Acceptance Criteria
+
+- `.\harness help` lists all subcommands with descriptions.
+- `.\harness check` produces the same output as direct `bootstrap.ps1 -WriteCache` invocation.
+- `.\harness invoke get_project_info` returns valid JSON envelope.
+- `.\harness evals` runs technical evals and returns summary.
+- `.\harness gap detect <trace>` correctly detects gaps.
+- All existing plan eval assertions pass when invoked through `.\harness` instead of direct script paths.
+- `/harness` workflow in agent context runs successfully.
+- README contains zero raw `powershell -NoProfile -ExecutionPolicy Bypass -File` paths.
+- `/start` workflow uses `.\harness check` instead of direct path.
+
+#### Tests
+
+- Subcommand routing test: each subcommand dispatches to correct script with correct arguments.
+- Unknown subcommand test: `.\harness foobar` returns exit code 2 and help text.
+- No-args test: `.\harness` without subcommand shows help.
+- Params forwarding test: `.\harness invoke create_level --params-file .\params.json --timeout 60` correctly maps to `invoke-command.ps1 -CommandName create_level -ParamsPath .\params.json -TimeoutSeconds 60`.
+- Exit code forwarding test: `.\harness check` returns same exit code as underlying `bootstrap.ps1`.
+- Workflow integration test: `/harness check` in agent context produces expected output format.
+
+#### Risks
+
+- Windows batch file quoting can be fragile with complex paths. Mitigation: test with paths containing spaces (OneDrive paths).
+- Adding another layer may hide errors. Mitigation: forward all stdout/stderr unchanged; only add the routing logic.
+
 ## Cross-Phase Architecture
 
 ### Recommended File Layout
 
 ```text
 src/RevitHarness/
-â”œâ”€â”€ README.md
-â”œâ”€â”€ bootstrap.ps1
-â”œâ”€â”€ registry-report.ps1
-â”œâ”€â”€ invoke-command.ps1
-â”œâ”€â”€ trace-writer.ps1
-â”œâ”€â”€ classify-failure.ps1
-â”œâ”€â”€ generate-lesson-candidates.ps1
-â”œâ”€â”€ detect-command-gap.ps1
-â”œâ”€â”€ generate-command-proposal.ps1
-â”œâ”€â”€ scaffold-command.ps1
-â”œâ”€â”€ validate-command-contract.ps1
-â”œâ”€â”€ schemas/
-â”‚   â”œâ”€â”€ bootstrap.schema.json
-â”‚   â”œâ”€â”€ command-result.schema.json
-â”‚   â”œâ”€â”€ trace.schema.json
-â”‚   â”œâ”€â”€ failure.schema.json
-â”‚   â”œâ”€â”€ lesson-candidate.schema.json
-â”‚   â”œâ”€â”€ command-gap.schema.json
-â”‚   â”œâ”€â”€ command-proposal.schema.json
-â”‚   â””â”€â”€ command-contract.schema.json
-â”œâ”€â”€ fixtures/
-â”‚   â”œâ”€â”€ errors/
-â”‚   â””â”€â”€ traces/
-â””â”€â”€ evals/
-    â”œâ”€â”€ run-evals.ps1
-    â”œâ”€â”€ eval-bootstrap.ps1
-    â”œâ”€â”€ eval-registry-report.ps1
-    â”œâ”€â”€ eval-invoke-command.ps1
-    â”œâ”€â”€ eval-failure-classifier.ps1
-    â”œâ”€â”€ eval-trace-writer.ps1
-    â”œâ”€â”€ eval-command-gap-detection.ps1
-    â”œâ”€â”€ eval-command-proposal.ps1
-    â”œâ”€â”€ eval-command-scaffold.ps1
-    â””â”€â”€ live/
-        â”œâ”€â”€ eval-create-levels-grids.ps1
-        â”œâ”€â”€ eval-create-basic-building.ps1
-        â”œâ”€â”€ eval-create-or-switch-3d-view.ps1
-        â””â”€â”€ eval-snapshot-statistics.ps1
+├── README.md
+├── bootstrap.ps1
+├── registry-report.ps1
+├── invoke-command.ps1
+├── trace-writer.ps1
+├── classify-failure.ps1
+├── generate-lesson-candidates.ps1
+├── detect-command-gap.ps1
+├── generate-command-proposal.ps1
+├── scaffold-command.ps1
+├── validate-command-contract.ps1
+├── schemas/
+│   ├── bootstrap.schema.json
+│   ├── command-result.schema.json
+│   ├── trace.schema.json
+│   ├── failure.schema.json
+│   ├── lesson-candidate.schema.json
+│   ├── command-gap.schema.json
+│   ├── command-proposal.schema.json
+│   └── command-contract.schema.json
+├── fixtures/
+│   ├── errors/
+│   └── traces/
+└── evals/
+    ├── run-evals.ps1
+    ├── eval-bootstrap.ps1
+    ├── eval-registry-report.ps1
+    ├── eval-invoke-command.ps1
+    ├── eval-failure-classifier.ps1
+    ├── eval-trace-writer.ps1
+    ├── eval-command-gap-detection.ps1
+    ├── eval-command-proposal.ps1
+    ├── eval-command-scaffold.ps1
+    └── live/
+        ├── eval-create-levels-grids.ps1
+        ├── eval-create-basic-building.ps1
+        ├── eval-create-or-switch-3d-view.ps1
+        └── eval-snapshot-statistics.ps1
 ```
 
 Use PowerShell first because this project already uses PowerShell for Revit bridge workflows and the target environment is Windows. Node can be introduced later if schema validation or reporting becomes cleaner there.
@@ -914,24 +1061,24 @@ Use PowerShell first because this project already uses PowerShell for Revit brid
 
 ```text
 .revit-harness/
-â”œâ”€â”€ runs/
-â”‚   â””â”€â”€ 20260602_120000_create-townhouse/
-â”‚       â”œâ”€â”€ trace.json
-â”‚       â”œâ”€â”€ bootstrap.json
-â”‚       â”œâ”€â”€ commands/
-â”‚       â”‚   â”œâ”€â”€ 001_get_project_info.json
-â”‚       â”‚   â””â”€â”€ 002_create_level.json
-â”‚       â””â”€â”€ snapshots/
-â”œâ”€â”€ cache/
-â”‚   â””â”€â”€ last-bootstrap.json
-â”œâ”€â”€ lesson-candidates/
-â”‚   â””â”€â”€ 20260602_120500_json_quoting.json
-â”œâ”€â”€ command-gaps/
-â”‚   â””â”€â”€ 20260602_121000_switch_or_create_3d_view.json
-â”œâ”€â”€ command-proposals/
-â”‚   â””â”€â”€ 20260602_121100_switch_or_create_3d_view.json
-â””â”€â”€ command-scaffolds/
-    â””â”€â”€ switch_or_create_3d_view/
+├── runs/
+│   └── 20260602_120000_create-townhouse/
+│       ├── trace.json
+│       ├── bootstrap.json
+│       ├── commands/
+│       │   ├── 001_get_project_info.json
+│       │   └── 002_create_level.json
+│       └── snapshots/
+├── cache/
+│   └── last-bootstrap.json
+├── lesson-candidates/
+│   └── 20260602_120500_json_quoting.json
+├── command-gaps/
+│   └── 20260602_121000_switch_or_create_3d_view.json
+├── command-proposals/
+│   └── 20260602_121100_switch_or_create_3d_view.json
+└── command-scaffolds/
+    └── switch_or_create_3d_view/
 ```
 
 Runtime output should be ignored by git unless a specific fixture is intentionally copied into `src/RevitHarness/fixtures/`.
@@ -959,6 +1106,9 @@ The full harness is complete when:
 - Technical evals run without Revit.
 - Live evals run or skip cleanly depending on Revit availability.
 - Future skill/tool changes can be evaluated against previous harness results.
+- Users interact with the harness through `.\harness <subcommand>` — no raw PowerShell paths required.
+- Agents can invoke `/harness` workflow to run any harness operation without constructing script paths.
+- README documentation uses only CLI subcommands, not direct script invocations.
 
 ## Non-Goals
 
@@ -971,7 +1121,7 @@ The full harness is complete when:
 
 ## Open Decisions
 
-- Implementation language for harness scripts: PowerShell, Node, or C# CLI.
+- ~~Implementation language for harness scripts: PowerShell, Node, or C# CLI.~~ **Resolved:** PowerShell for scripts, `harness.bat` wrapper for CLI entry point.
 - Whether trace files should be gitignored by default.
 - Whether live Revit evals should run manually only or become CI-like smoke tests.
 

@@ -16,8 +16,7 @@ if /i "%~1"=="gap" goto :gap
 
 echo [ERROR] Unknown subcommand: %~1
 echo.
-call :help
-exit /b 2
+goto :help
 
 :check
 %PS% "%HARNESS_DIR%\bootstrap.ps1" -WriteCache
