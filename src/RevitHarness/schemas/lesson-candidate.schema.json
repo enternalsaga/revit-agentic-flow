@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["candidateId", "createdAtUtc", "category", "frequency", "supportingTracePaths", "summary", "generalizedLesson", "recommendedPatchTargets", "risk", "requiresHumanApproval"],
+  "properties": {
+    "candidateId": { "type": "string" },
+    "createdAtUtc": { "type": "string" },
+    "category": { "type": "string" },
+    "frequency": { "type": "integer" },
+    "supportingTracePaths": { "type": "array", "items": { "type": "string" } },
+    "summary": { "type": "string" },
+    "generalizedLesson": { "type": "string" },
+    "recommendedPatchTargets": { "type": "array", "items": { "type": "string" } },
+    "risk": { "type": "string" },
+    "requiresHumanApproval": { "type": "boolean" }
+  }
+}
