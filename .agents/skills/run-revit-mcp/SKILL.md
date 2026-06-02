@@ -69,10 +69,10 @@ Use the bootstrap report as runtime truth:
 
 Load references only when needed:
 
-- `references/tool-reference.md` when mapping tasks to tools.
-- `references/fallbacks.md` when a dedicated tool is unavailable or fails.
-- `references/failure-taxonomy.md` when classifying an error.
-- `references/verification-checklist.md` before final reporting.
+- `.agents/skills/run-revit-mcp/references/tool-reference.md` when mapping tasks to tools.
+- `.agents/skills/run-revit-mcp/references/fallbacks.md` when a dedicated tool is unavailable or fails.
+- `.agents/skills/run-revit-mcp/references/failure-taxonomy.md` when classifying an error.
+- `.agents/skills/run-revit-mcp/references/verification-checklist.md` before final reporting.
 
 ### MANDATORY: Load tool schemas first
 
