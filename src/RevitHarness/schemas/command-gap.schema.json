@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Revit Harness Command Gap",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "gapId",
+    "createdAtUtc",
+    "missingCommandName",
+    "category",
+    "confidence",
+    "evidence",
+    "recommendedMode",
+    "requiresHumanApproval"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "gapId": { "type": "string", "minLength": 8 },
+    "createdAtUtc": { "type": "string" },
+    "missingCommandName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "category": {
+      "type": "string",
+      "enum": [
+        "command_not_registered",
+        "view_missing",
+        "repeated_dynamic_csharp",
+        "schema_gap",
+        "tool_wrapper_gap",
+        "commandset_gap"
+      ]
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "evidence": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "sourceTracePaths": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "fallbackUsed": { "type": "string" },
+    "recommendedMode": {
+      "type": "string",
+      "enum": ["observe", "propose", "implement"]
+    },
+    "requiresHumanApproval": { "type": "boolean", "const": true },
+    "suggestedSchema": { "type": "object" },
+    "suggestedEval": { "type": "string" }
+  }
+}

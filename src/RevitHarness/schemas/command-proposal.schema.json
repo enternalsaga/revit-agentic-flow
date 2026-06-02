@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Revit Harness Command Proposal",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "proposalId",
+    "createdAtUtc",
+    "commandName",
+    "summary",
+    "reason",
+    "mode",
+    "requiresHumanApproval",
+    "inputSchema",
+    "outputSchema",
+    "filesToCreate",
+    "filesToModify",
+    "evalPlan",
+    "approval"
+  ],
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "proposalId": { "type": "string", "minLength": 8 },
+    "createdAtUtc": { "type": "string" },
+    "commandName": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "summary": { "type": "string", "minLength": 12 },
+    "reason": { "type": "string", "minLength": 12 },
+    "mode": { "type": "string", "enum": ["propose", "implement"] },
+    "requiresHumanApproval": { "type": "boolean", "const": true },
+    "inputSchema": { "type": "object" },
+    "outputSchema": { "type": "object" },
+    "filesToCreate": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "filesToModify": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "evalPlan": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 1
+    },
+    "approval": {
+      "type": "object",
+      "required": ["status", "approvedBy", "approvedAtUtc"],
+      "properties": {
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "approvedBy": { "type": ["string", "null"] },
+        "approvedAtUtc": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
