@@ -15,8 +15,8 @@ if /i "%~1"=="evals" goto :evals
 if /i "%~1"=="gap" goto :gap
 
 echo [ERROR] Unknown subcommand: %~1
-echo.
-goto :help
+echo Run 'harness help' for usage.
+exit /b 2
 
 :check
 %PS% "%HARNESS_DIR%\bootstrap.ps1" -WriteCache
@@ -28,7 +28,7 @@ exit /b %ERRORLEVEL%
 
 :invoke
 if "%~2"=="" (
-    echo [ERROR] Usage: harness invoke ^<command_name^> [--params-file ^<file^>] [--timeout ^<seconds^>]
+    echo [ERROR] Usage: harness invoke ^<command_name^> [--params-file ^<file^>] [--params ^<json^>] [--timeout ^<seconds^>]
     exit /b 2
 )
 set "CMD_NAME=%~2"
@@ -78,6 +78,10 @@ if /i "%~2"=="new" (
     exit /b !ERRORLEVEL!
 )
 if /i "%~2"=="append" (
+    if "%~3"=="" (
+        echo [ERROR] Usage: harness trace append ^<runId^> ^<command-result.json^>
+        exit /b 2
+    )
     if "%~4"=="" (
         echo [ERROR] Usage: harness trace append ^<runId^> ^<command-result.json^>
         exit /b 2
@@ -86,6 +90,10 @@ if /i "%~2"=="append" (
     exit /b !ERRORLEVEL!
 )
 if /i "%~2"=="finalize" (
+    if "%~3"=="" (
+        echo [ERROR] Usage: harness trace finalize ^<runId^> ^<passed^|failed^|partial^>
+        exit /b 2
+    )
     if "%~4"=="" (
         echo [ERROR] Usage: harness trace finalize ^<runId^> ^<passed^|failed^|partial^>
         exit /b 2
@@ -136,6 +144,7 @@ if /i "%~2"=="scaffold" (
         exit /b 2
     )
     set "SCAFFOLD_MODE=-Apply"
+    if /i "%~3"=="--dry-run" set "SCAFFOLD_MODE=-DryRun"
     if /i "%~4"=="--dry-run" set "SCAFFOLD_MODE=-DryRun"
     %PS% "%HARNESS_DIR%\scaffold-command.ps1" -ApprovedProposalPath "%~3" %SCAFFOLD_MODE%
     exit /b !ERRORLEVEL!
