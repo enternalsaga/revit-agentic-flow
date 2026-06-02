@@ -10,7 +10,9 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 $groups = @{}
 Get-ChildItem -Path $TraceDirectory -Filter "*.json" -File | ForEach-Object {
     $trace = Get-Content -Path $_.FullName -Raw | ConvertFrom-Json
-    foreach ($failure in @($trace.classifiedFailures)) {
+    $failures = $trace.classifiedFailures
+    if (-not $failures) { return }
+    foreach ($failure in $failures) {
         if (-not $groups.ContainsKey($failure.category)) {
             $groups[$failure.category] = @()
         }
