@@ -141,6 +141,7 @@ Initial taxonomy:
 - `invalid_geometry`
 - `view_missing`
 - `command_not_registered`
+- `command_gap`
 - `transport_unavailable`
 - `command_bug`
 - `skill_gap`
@@ -376,6 +377,7 @@ Initial categories:
 - `invalid_geometry`: Revit rejects geometry or creates zero elements because geometry is invalid.
 - `view_missing`: requested view is missing and no fallback creates it.
 - `command_not_registered`: runtime bridge reports method not found.
+- `command_gap`: a reusable operation is missing and the task needed repeated dynamic C# or helper fallback. This category is introduced by Phase 5; Phase 2 implementations must treat it as a future enum extension until Phase 5 updates the classifier and schema.
 - `transport_unavailable`: named pipe and JSON-RPC are unreachable.
 - `command_bug`: command exists and params are valid, but implementation returns an internal bug.
 - `skill_gap`: agent plan or skill instruction caused an avoidable wrong tool choice.
@@ -459,6 +461,7 @@ Candidate example:
 - Fixture tests for every taxonomy category.
 - Regression test for stale session: source has command, runtime says method not found.
 - Regression test for quoting: invalid JSON primitive from PowerShell.
+- Regression test for command gap: repeated dynamic C# fallback for the same operation produces a command proposal, not an immediate patch.
 - Regression test for verification gap: no snapshot after modeling command sequence.
 
 #### Risks
@@ -637,6 +640,228 @@ Before approving any future self-improvement patch:
 - Live Revit evals may mutate user models. Mitigation: require a disposable test model or create a temporary project where possible.
 - Eval runtime may be slow. Mitigation: separate technical evals from live smoke evals.
 
+### Phase 5: Command Gap Resolver and Controlled Command Creation
+
+Purpose: let agents move from "missing command detected" to a reviewable command proposal, and optionally to a scaffolded command implementation, without silently patching the project during a modeling task.
+
+This phase adds the missing capability that Phase 1-4 intentionally defer: creating new Revit MCP commands when repeated traces prove that a reusable operation is missing.
+
+#### Operating Modes
+
+The command gap resolver must support three explicit modes:
+
+- `observe`: record command gaps in traces only.
+- `propose`: generate a command proposal and required eval plan. This is the default.
+- `implement`: scaffold and edit command code only after explicit user approval of a reviewed proposal.
+
+Agents must not enter `implement` mode from a normal modeling request. They can only implement a command when the user asks to create the command or when a reviewed proposal is approved.
+
+#### Deliverables
+
+- Modify `src/RevitHarness/classify-failure.ps1` and `src/RevitHarness/schemas/failure.schema.json` to include `command_gap` only when Phase 5 classification is implemented.
+- `src/RevitHarness/detect-command-gap.ps1`
+- `src/RevitHarness/generate-command-proposal.*`
+- `src/RevitHarness/scaffold-command.*`
+- `src/RevitHarness/validate-command-contract.*`
+- `src/RevitHarness/evals/eval-command-gap-detection.*`
+- `src/RevitHarness/evals/eval-command-proposal.*`
+- `src/RevitHarness/evals/eval-command-scaffold.*`
+- `src/RevitHarness/schemas/command-gap.schema.json`
+- `src/RevitHarness/schemas/command-proposal.schema.json`
+- `src/RevitHarness/schemas/command-contract.schema.json`
+- Runtime review queues:
+  - `.revit-harness/command-gaps/`
+  - `.revit-harness/command-proposals/`
+  - `.revit-harness/command-scaffolds/`
+
+#### Command Gap Detection
+
+`detect-command-gap` reads traces and registry reports, then identifies operations where a dedicated command is missing.
+
+Detection signals:
+
+- A task uses `send_code_to_revit` or compiled helper DLLs for the same operation more than once.
+- A runtime command returns `Method not found`, and source audit confirms no command implementation exists.
+- A skill or trace marks a fallback reason as "no dedicated tool".
+- A verification trace shows successful dynamic C# behavior that could become a reusable command.
+- A command exists in one layer but not all required layers, such as C# commandset without MCP wrapper.
+
+Output shape:
+
+```json
+{
+  "gapId": "20260602_switch_or_create_3d_view",
+  "operation": "switch_or_create_3d_view",
+  "status": "missing_command",
+  "confidence": 0.91,
+  "evidence": [
+    "switch_view failed because the requested 3D view did not exist.",
+    "A helper C# file created NP_3D_Townhouse successfully.",
+    "No command named create_3d_view or switch_or_create_3d_view exists in command.json."
+  ],
+  "fallbackUsed": "compiled_helper_csharp",
+  "recommendedMode": "propose"
+}
+```
+
+#### Command Proposal Contract
+
+`generate-command-proposal` converts one gap into a concrete implementation brief.
+
+Required proposal fields:
+
+- `proposalId`
+- `createdAtUtc`
+- `sourceGapId`
+- `commandName`
+- `purpose`
+- `whyDedicatedCommandIsNeeded`
+- `inputSchema`
+- `outputSchema`
+- `implementationTargets`
+- `manifestEntry`
+- `typescriptWrapperPlan`
+- `csharpMcpWrapperPlan`
+- `commandsetImplementationPlan`
+- `evalPlan`
+- `deploymentImpact`
+- `risks`
+- `approvalRequired`
+
+Example command proposal:
+
+```json
+{
+  "commandName": "switch_or_create_3d_view",
+  "purpose": "Activate an existing 3D view by name or create an isometric 3D view when missing.",
+  "inputSchema": {
+    "viewName": "NP_3D_Townhouse",
+    "createIfMissing": true,
+    "detailLevel": "Fine",
+    "activate": true
+  },
+  "outputSchema": {
+    "success": true,
+    "viewId": 12345,
+    "viewName": "NP_3D_Townhouse",
+    "created": true,
+    "activated": true
+  },
+  "implementationTargets": [
+    "mcp-servers-for-revit/commandset/Commands/SwitchOrCreate3DViewCommand.cs",
+    "mcp-servers-for-revit/commandset/Services/SwitchOrCreate3DViewEventHandler.cs",
+    "mcp-servers-for-revit/server/src/tools/switch_or_create_3d_view.ts",
+    "src/RevitMcpServer/Tools/AccessTools.cs",
+    "mcp-servers-for-revit/command.json"
+  ],
+  "approvalRequired": true
+}
+```
+
+#### Command Scaffold Contract
+
+`scaffold-command` creates only the files and manifest entries needed for an approved proposal.
+
+It must support dry run and apply modes:
+
+```powershell
+.\src\RevitHarness\scaffold-command.ps1 `
+  -ProposalPath .\.revit-harness\command-proposals\20260602_switch_or_create_3d_view.json `
+  -Mode DryRun
+```
+
+Dry run output must list exact files to create or modify without writing source changes.
+
+Apply mode may create or modify:
+
+- TypeScript MCP wrapper under `mcp-servers-for-revit/server/src/tools/`.
+- C# Phase 1 wrapper under `src/RevitMcpServer/Tools/`.
+- C# commandset command under `mcp-servers-for-revit/commandset/Commands/`.
+- C# commandset service handler under `mcp-servers-for-revit/commandset/Services/`.
+- Command manifest entry in `mcp-servers-for-revit/command.json`.
+- Eval fixture or smoke eval under `src/RevitHarness/evals/`.
+
+The scaffold must not deploy add-ins, restart Revit, or commit changes automatically.
+Scaffold apply must write only inside the allowlisted target paths above, and proposal mode must never write source files.
+
+#### Command Contract Validation
+
+`validate-command-contract` checks source consistency before build/deploy.
+
+Validation checks:
+
+- `commandName` matches across proposal, manifest, wrapper, and C# command implementation.
+- The TypeScript schema and C# wrapper parameter names match the proposal input schema.
+- The commandset class inherits the correct command base class.
+- The commandset command constructs the expected service handler and both files follow local namespace and subfolder conventions.
+- `command.json` contains exactly one entry for the new command.
+- The new command appears in registry report after source changes.
+- A targeted eval exists for the command.
+
+Failure output must include file paths and the mismatched names.
+
+#### Eval Requirements
+
+Every new command must ship with at least one targeted eval:
+
+- Source-level eval: registry and schema contract.
+- Build eval: `dotnet build src/RevitMcpServer.sln -c Release` and the matching commandset build config must pass after scaffold apply.
+- Runtime smoke eval: optional when Revit is unavailable, required before declaring the command production-ready.
+
+For `switch_or_create_3d_view`, the live eval should:
+
+1. Call the command with a unique view name.
+2. Assert the command returns `created: true`.
+3. Call the command again with the same name.
+4. Assert the command returns `created: false`.
+5. Run `snapshot_workspace` or `get_views` to verify the view exists.
+
+#### Agent Workflow
+
+When a missing command is detected during execution:
+
+1. Continue the active modeling task using the safest approved fallback if possible.
+2. Record the fallback in the trace.
+3. Classify the issue as `command_gap` when evidence supports it.
+4. In `observe` mode, stop there.
+5. In `propose` mode, write a command proposal to `.revit-harness/command-proposals/`.
+6. In `implement` mode, require explicit approval, run scaffold dry run, then apply source changes.
+7. Run command contract validation.
+8. Run technical evals.
+9. If Revit is available, run the targeted live smoke eval.
+10. Report changed files, eval results, and remaining deployment/restart steps.
+
+#### Acceptance Criteria
+
+- Repeated helper C# usage can produce a `command_gap` classification.
+- A command proposal includes schema, target files, eval plan, and approval requirement.
+- Scaffold dry run reports exact file changes without touching source.
+- Scaffold apply creates a command skeleton matching local project patterns.
+- Contract validation catches mismatched command names across layers.
+- Build validation catches compile errors in MCP server and commandset source after scaffold apply.
+- New command work is blocked unless mode is `implement` and approval is explicit.
+- The harness never deploys, restarts Revit, or commits without explicit user instruction.
+
+#### Tests
+
+- Fixture test: two traces using the same helper C# operation produce one command gap.
+- Fixture test: one isolated helper C# operation does not produce a command gap proposal by default.
+- Proposal test: `switch_or_create_3d_view` proposal includes all required fields.
+- Scaffold dry-run test: reports expected create/modify paths and writes no files.
+- Source safety test: proposal mode writes only review queue files, and scaffold apply writes only allowlisted source/eval paths.
+- Contract validation test: intentionally mismatched command names fail validation.
+- Eval presence test: scaffolded command requires at least one targeted eval file.
+- Build test: scaffolded command compiles in the MCP server and the relevant commandset build config.
+- Runtime output test: `.revit-harness/command-gaps/`, `.revit-harness/command-proposals/`, and `.revit-harness/command-scaffolds/` are ignored by git.
+- Secret redaction test: command gap and proposal files do not contain API keys, passwords, tokens, full environment dumps, or full generated helper source.
+
+#### Risks
+
+- Agents may overfit one-off modeling needs into too many commands. Mitigation: require repeated evidence or explicit user request.
+- Scaffolded command code may compile but fail in live Revit. Mitigation: targeted live smoke eval before production-ready status.
+- Command creation can interrupt a modeling session. Mitigation: default mode is `propose`; implementation is a separate workflow.
+- Source-level registry can pass while runtime remains stale. Mitigation: report source-ready and runtime-ready as separate statuses.
+
 ## Cross-Phase Architecture
 
 ### Recommended File Layout
@@ -650,12 +875,19 @@ src/RevitHarness/
 â”œâ”€â”€ trace-writer.ps1
 â”œâ”€â”€ classify-failure.ps1
 â”œâ”€â”€ generate-lesson-candidates.ps1
+â”œâ”€â”€ detect-command-gap.ps1
+â”œâ”€â”€ generate-command-proposal.ps1
+â”œâ”€â”€ scaffold-command.ps1
+â”œâ”€â”€ validate-command-contract.ps1
 â”œâ”€â”€ schemas/
 â”‚   â”œâ”€â”€ bootstrap.schema.json
 â”‚   â”œâ”€â”€ command-result.schema.json
 â”‚   â”œâ”€â”€ trace.schema.json
 â”‚   â”œâ”€â”€ failure.schema.json
-â”‚   â””â”€â”€ lesson-candidate.schema.json
+â”‚   â”œâ”€â”€ lesson-candidate.schema.json
+â”‚   â”œâ”€â”€ command-gap.schema.json
+â”‚   â”œâ”€â”€ command-proposal.schema.json
+â”‚   â””â”€â”€ command-contract.schema.json
 â”œâ”€â”€ fixtures/
 â”‚   â”œâ”€â”€ errors/
 â”‚   â””â”€â”€ traces/
@@ -666,6 +898,9 @@ src/RevitHarness/
     â”œâ”€â”€ eval-invoke-command.ps1
     â”œâ”€â”€ eval-failure-classifier.ps1
     â”œâ”€â”€ eval-trace-writer.ps1
+    â”œâ”€â”€ eval-command-gap-detection.ps1
+    â”œâ”€â”€ eval-command-proposal.ps1
+    â”œâ”€â”€ eval-command-scaffold.ps1
     â””â”€â”€ live/
         â”œâ”€â”€ eval-create-levels-grids.ps1
         â”œâ”€â”€ eval-create-basic-building.ps1
@@ -689,8 +924,14 @@ Use PowerShell first because this project already uses PowerShell for Revit brid
 â”‚       â””â”€â”€ snapshots/
 â”œâ”€â”€ cache/
 â”‚   â””â”€â”€ last-bootstrap.json
-â””â”€â”€ lesson-candidates/
-    â””â”€â”€ 20260602_120500_json_quoting.json
+â”œâ”€â”€ lesson-candidates/
+â”‚   â””â”€â”€ 20260602_120500_json_quoting.json
+â”œâ”€â”€ command-gaps/
+â”‚   â””â”€â”€ 20260602_121000_switch_or_create_3d_view.json
+â”œâ”€â”€ command-proposals/
+â”‚   â””â”€â”€ 20260602_121100_switch_or_create_3d_view.json
+â””â”€â”€ command-scaffolds/
+    â””â”€â”€ switch_or_create_3d_view/
 ```
 
 Runtime output should be ignored by git unless a specific fixture is intentionally copied into `src/RevitHarness/fixtures/`.
@@ -711,6 +952,9 @@ The full harness is complete when:
 - JSON-RPC fallback calls no longer require hand-written shell quoting.
 - Every failed Revit command can be traced to a structured run record.
 - Repeated failures generate reviewable lesson candidates.
+- Missing reusable operations generate reviewable command gap reports.
+- Approved command gaps can generate command proposals with schemas, target files, eval plans, and explicit approval gates.
+- Approved command proposals can scaffold and validate source changes without deploy, restart, or commit side effects.
 - `run-revit-mcp` uses harness bootstrap and wrappers.
 - Technical evals run without Revit.
 - Live evals run or skip cleanly depending on Revit availability.
@@ -722,7 +966,8 @@ The full harness is complete when:
 - Do not optimize building design quality yet.
 - Do not replace MCP server architecture.
 - Do not add model/provider-specific behavior.
-- Do not auto-commit generated lessons or patches.
+- Do not auto-commit generated lessons, command proposals, or patches.
+- Do not auto-implement new commands during ordinary modeling tasks; command implementation requires explicit `implement` mode and approval.
 
 ## Open Decisions
 
