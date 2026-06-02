@@ -1,0 +1,8 @@
+{
+  "command": "switch_view",
+  "transport": "jsonrpc",
+  "result": {
+    "Success": false,
+    "Message": "View not found. Name='{3D}', Id="
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "trace": {
+    "commands": [
+      { "success": true, "command": "create_level" },
+      { "success": true, "command": "create_line_based_element" }
+    ],
+    "snapshots": [],
+    "modelStatistics": null,
+    "warnings": null,
+    "finalStatus": "completed"
+  }
+}

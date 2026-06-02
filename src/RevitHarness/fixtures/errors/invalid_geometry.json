@@ -1,0 +1,9 @@
+{
+  "command": "create_sloped_roof",
+  "transport": "jsonrpc",
+  "result": {
+    "Success": true,
+    "Message": "Successfully created 0 sloped roof(s).\n\nWarnings:\n  - Failed to create roof 'Main': The roof is not created by pick walls.",
+    "Response": []
+  }
+}

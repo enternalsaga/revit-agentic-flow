@@ -1,0 +1,8 @@
+{
+  "command": "get_available_family_types",
+  "transport": "none",
+  "error": {
+    "message": "ConvertFrom-Json : Invalid JSON primitive: OST_Walls.",
+    "raw": "Invalid JSON primitive: OST_Walls."
+  }
+}

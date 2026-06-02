@@ -1,0 +1,8 @@
+{
+  "command": "list_available_commands",
+  "transport": "jsonrpc",
+  "error": {
+    "message": "Revit JSON-RPC error: {\"code\":-32601,\"message\":\"Method 'list_available_commands' not found\"}",
+    "raw": "Method 'list_available_commands' not found"
+  }
+}
