@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <AssemblyName>RevitMCPCommandSet</AssemblyName>
+        <RootNamespace>RevitMCPCommandSet</RootNamespace>
         <UseWPF>true</UseWPF>
         <LangVersion>latest</LangVersion>
         <PlatformTarget>x64</PlatformTarget>
@@ -67,14 +69,14 @@
 
     <Target Name="DeployCommandSet" AfterTargets="Build">
         <PropertyGroup>
-            <PluginAddInRoot>$(ProjectDir)..\plugin\bin\AddIn $(RevitVersion) $(Configuration)\revit_mcp_plugin\</PluginAddInRoot>
+            <PluginAddInRoot>$(ProjectDir)..\..\mcp-servers-for-revit\plugin\bin\AddIn $(RevitVersion) $(Configuration)\revit_mcp_plugin\</PluginAddInRoot>
             <CommandSetPluginDir>$(PluginAddInRoot)Commands\RevitMCPCommandSet\</CommandSetPluginDir>
             <RevitAddinsDir>$(AppData)\Autodesk\Revit\Addins\$(RevitVersion)\revit_mcp_plugin\Commands\RevitMCPCommandSet\</RevitAddinsDir>
         </PropertyGroup>
 
         <ItemGroup>
             <CommandSetBinaries Include="$(TargetDir)*.dll;$(TargetDir)*.pdb" Exclude="$(TargetDir)RevitMCPSDK.dll" />
-            <CommandJsonFile Include="$(ProjectDir)..\command.json" />
+            <CommandJsonFile Include="$(ProjectDir)command.json" />
         </ItemGroup>
 
         <!-- Always: Copy to plugin's AddIn output for release packaging -->
