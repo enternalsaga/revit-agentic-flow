@@ -2,10 +2,10 @@
   "name": "RevitMCPCommandSet",
   "description": "Command registry for Revit MCP tools and Revit API automation",
   "developer": {
-    "name": "mcp-servers-for-revit",
+    "name": "Revit MCP",
     "email": "",
     "website": "",
-    "organization": "mcp-servers-for-revit"
+    "organization": "The Design Lab"
   },
   "commands": [
     {

@@ -75,7 +75,7 @@ claude mcp add revit-mcp -- "C:\Users\baoanh.nguyen\OneDrive - The Design Lab\Wo
 
 1. **Khởi động Revit:** Mở phiên bản Revit bạn vừa cài đặt plugin (vd: Revit 2024).
 2. **Xác nhận Load Plugin:** Nếu Revit hiện cảnh báo về add-in không xác định (Unknown Publisher), hãy chọn **"Always Load"**.
-3. **Cấu hình trong Revit:** Trên thanh Ribbon của Revit, tìm tab **mcp-servers-for-revit**, bấm nút **Settings**. Tại đây, đảm bảo các chức năng/lệnh (tools) bạn muốn AI sử dụng đều đã được đánh dấu tích (enable), sau đó bấm **Save**.
+3. **Cấu hình trong Revit:** Trên thanh Ribbon của Revit, tìm tab **Revit MCP**, bấm nút **Settings**. Tại đây, đảm bảo các chức năng/lệnh (tools) bạn muốn AI sử dụng đều đã được đánh dấu tích (enable), sau đó bấm **Save**.
 4. **Sử dụng AI:** Mở AI Client (Claude/Cursor) đã được kết nối MCP ở bước trên. Bạn có thể bắt đầu ra lệnh cho AI bằng ngôn ngữ tự nhiên.
    - *Ví dụ 1:* "Hãy lấy thông tin các phòng trong model hiện tại."
    - *Ví dụ 2:* "Tạo một hệ lưới trục (grid) 5x5 khoảng cách 4000mm."
@@ -88,7 +88,7 @@ claude mcp add revit-mcp -- "C:\Users\baoanh.nguyen\OneDrive - The Design Lab\Wo
 Trong quá trình phát triển, khi có cập nhật code C# (MCP server, plugin, hoặc commandset), bạn cần thực hiện theo các bước sau để làm mới hệ thống:
 
 ### Cập nhật MCP Server và Plugin (Phần C#)
-Nếu mã nguồn C# (trong `plugin/` hoặc `commandset/`) được cập nhật:
+Nếu mã nguồn C# (trong `src/RevitMcpServer/`, `src/RevitMcpPlugin/`, hoặc `src/RevitMcpCommandSet/`) được cập nhật:
 1. **Tắt hẳn Revit** (điều này bắt buộc vì nếu Revit đang mở, các file DLL sẽ bị khóa và không thể chép đè).
 2. Build MCP server, commandset, và deploy plugin:
    ```powershell
