@@ -29,17 +29,17 @@ if ($text -match 'Invalid JSON primitive|ConvertFrom-Json|Invalid object passed 
 }
 
 if ($text -match 'Method .* not found|-32601') {
-    New-Classification "command_not_registered" 0.92 @("Runtime bridge reported method not found.") "Run bootstrap and registry report to detect stale runtime or missing command registration." @("src/RevitHarness/bootstrap.ps1", "mcp-servers-for-revit/command.json") | ConvertTo-Json -Depth 10
+    New-Classification "command_not_registered" 0.92 @("Runtime bridge reported method not found.") "Run bootstrap and registry report to detect stale runtime or missing command registration." @("src/RevitHarness/bootstrap.ps1", "src/RevitMcpCommandSet/command.json") | ConvertTo-Json -Depth 10
     exit 0
 }
 
 if ($text -match 'created 0 .*roof|not created by pick walls|invalid geometry') {
-    New-Classification "invalid_geometry" 0.88 @("Command output indicates geometry was rejected or created zero elements.") "Retry with bounded valid geometry; if repeated, inspect command handler geometry assumptions." @("mcp-servers-for-revit/commandset/Services/CreateSlopedRoofEventHandler.cs", ".agents/skills/run-revit-mcp/SKILL.md") | ConvertTo-Json -Depth 10
+    New-Classification "invalid_geometry" 0.88 @("Command output indicates geometry was rejected or created zero elements.") "Retry with bounded valid geometry; if repeated, inspect command handler geometry assumptions." @("src/RevitMcpCommandSet/Services/CreateSlopedRoofEventHandler.cs", ".agents/skills/run-revit-mcp/SKILL.md") | ConvertTo-Json -Depth 10
     exit 0
 }
 
 if ($text -match 'View not found') {
-    New-Classification "view_missing" 0.9 @("Requested view does not exist in the active model.") "Create or discover a valid 3D view before switching, or snapshot the current view and report the limitation." @("mcp-servers-for-revit/commandset/Services/SwitchViewEventHandler.cs", "src/RevitHarness/evals/live/eval-create-or-switch-3d-view.ps1") | ConvertTo-Json -Depth 10
+    New-Classification "view_missing" 0.9 @("Requested view does not exist in the active model.") "Create or discover a valid 3D view before switching, or snapshot the current view and report the limitation." @("src/RevitMcpCommandSet/Services/SwitchViewEventHandler.cs", "src/RevitHarness/evals/live/eval-create-or-switch-3d-view.ps1") | ConvertTo-Json -Depth 10
     exit 0
 }
 

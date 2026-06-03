@@ -21,10 +21,9 @@ function Get-RelativeNameSet {
         Sort-Object -Unique
 }
 
-$commandJsonPath = Join-Path $WorkspaceRoot "mcp-servers-for-revit/command.json"
-$tsToolsPath = Join-Path $WorkspaceRoot "mcp-servers-for-revit/server/src/tools"
+$commandJsonPath = Join-Path $WorkspaceRoot "src/RevitMcpCommandSet/command.json"
 $csharpToolsPath = Join-Path $WorkspaceRoot "src/RevitMcpServer/Tools"
-$commandsetPath = Join-Path $WorkspaceRoot "mcp-servers-for-revit/commandset/Commands"
+$commandsetPath = Join-Path $WorkspaceRoot "src/RevitMcpCommandSet/Commands"
 
 if (-not (Test-Path $commandJsonPath)) {
     throw "Missing command manifest: $commandJsonPath"
@@ -32,12 +31,6 @@ if (-not (Test-Path $commandJsonPath)) {
 
 $manifest = Get-Content -Path $commandJsonPath -Raw | ConvertFrom-Json
 $manifestCommands = @($manifest.commands | ForEach-Object { $_.commandName } | Sort-Object -Unique)
-
-$typescriptTools = Get-RelativeNameSet -Path $tsToolsPath -Pattern "*.ts" -Transform {
-    param($file)
-    if ($file.BaseName -in @("register", "index")) { return $null }
-    return $file.BaseName
-}
 
 $csharpMcpTools = @()
 if (Test-Path $csharpToolsPath) {
@@ -71,22 +64,18 @@ $report = [ordered]@{
     workspaceRoot = $WorkspaceRoot
     generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
     manifestCommands = $manifestCommands
-    typescriptTools = $typescriptTools
     csharpMcpTools = $csharpMcpTools
     commandsetImplementations = $commandsetImplementations
     runtimeRegisteredCommands = $null
     counts = [ordered]@{
         manifest = $manifestCommands.Count
-        typescriptTools = $typescriptTools.Count
         csharpMcpTools = $csharpMcpTools.Count
         commandsetImplementations = $commandsetImplementations.Count
         runtimeRegisteredCommands = $null
     }
     coverageGaps = [ordered]@{
-        manifest_without_typescript_tool = [object[]]@(Compare-Layers $manifestCommands $typescriptTools)
         manifest_without_csharp_wrapper = [object[]]@(Compare-Layers $manifestCommands $csharpMcpTools)
         manifest_without_commandset_implementation = [object[]]@(Compare-Layers $manifestCommands $commandsetImplementations)
-        typescript_tool_without_manifest = [object[]]@(Compare-Layers $typescriptTools $manifestCommands)
         csharp_wrapper_without_manifest = [object[]]@(Compare-Layers $csharpMcpTools $manifestCommands)
         runtime_missing_manifest_command = $null
         runtime_extra_command = $null

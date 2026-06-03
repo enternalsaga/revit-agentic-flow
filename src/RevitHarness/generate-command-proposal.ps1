@@ -42,18 +42,18 @@ function New-SwitchOrCreate3DViewProposal {
             activated = [ordered]@{ type = "boolean" }
         }
         filesToCreate = @(
-            "mcp-servers-for-revit/server/src/tools/switch_or_create_3d_view.ts",
-            "mcp-servers-for-revit/commandset/Commands/SwitchOrCreate3DViewCommand.cs",
+            "src/RevitMcpServer/Tools/AccessTools.cs",
+            "src/RevitMcpCommandSet/Commands/SwitchOrCreate3DViewCommand.cs",
             "src/RevitHarness/evals/live/eval-switch-or-create-3d-view.ps1"
         )
         filesToModify = @(
             "src/RevitMcpServer/Tools/AccessTools.cs",
-            "mcp-servers-for-revit/command.json"
+            "src/RevitMcpCommandSet/command.json"
         )
         evalPlan = @(
             "Run validate-command-proposal with -RequireApproved after user approval.",
             "Run scaffold-command in dry-run mode.",
-            "Run registry-report and confirm switch_or_create_3d_view appears in manifest, TypeScript tools, C# wrappers, and commandset implementations.",
+            "Run registry-report and confirm switch_or_create_3d_view appears in manifest, C# wrappers, and commandset implementations.",
             "Run live eval-switch-or-create-3d-view with Revit open.",
             "Run snapshot_workspace after activating the created 3D view."
         )
@@ -88,12 +88,11 @@ switch ($gap.missingCommandName) {
             inputSchema = [ordered]@{}
             outputSchema = [ordered]@{ success = [ordered]@{ type = "boolean" } }
             filesToCreate = @(
-                "mcp-servers-for-revit/server/src/tools/$($gap.missingCommandName).ts",
-                "mcp-servers-for-revit/commandset/Commands/$($gap.missingCommandName).cs"
+                "src/RevitMcpCommandSet/Commands/$($gap.missingCommandName).cs"
             )
             filesToModify = @(
                 "src/RevitMcpServer/Tools/CreationTools.cs",
-                "mcp-servers-for-revit/command.json"
+                "src/RevitMcpCommandSet/command.json"
             )
             evalPlan = @("Run registry-report and add a command-specific live smoke eval.")
             approval = [ordered]@{ status = "pending"; approvedBy = $null; approvedAtUtc = $null }

@@ -20,13 +20,12 @@
     "activated": { "type": "boolean" }
   },
   "filesToCreate": [
-    "mcp-servers-for-revit/server/src/tools/switch_or_create_3d_view.ts",
-    "mcp-servers-for-revit/commandset/Commands/SwitchOrCreate3DViewCommand.cs",
+    "src/RevitMcpCommandSet/Commands/SwitchOrCreate3DViewCommand.cs",
     "src/RevitHarness/evals/live/eval-switch-or-create-3d-view.ps1"
   ],
   "filesToModify": [
     "src/RevitMcpServer/Tools/AccessTools.cs",
-    "mcp-servers-for-revit/command.json"
+    "src/RevitMcpCommandSet/command.json"
   ],
   "evalPlan": [
     "Run registry report and confirm no source-layer coverage gaps for switch_or_create_3d_view.",

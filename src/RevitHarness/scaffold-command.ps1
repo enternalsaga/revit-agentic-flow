@@ -39,43 +39,6 @@ function Write-GeneratedFile {
     return $targetPath
 }
 
-function Get-SwitchOrCreate3DViewTypeScript {
-@'
-import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { withRevitConnection } from "../utils/ConnectionManager.js";
-
-export function registerSwitchOrCreate3DViewTool(server: McpServer) {
-  server.tool(
-    "switch_or_create_3d_view",
-    "Create or activate an isometric 3D view for verification snapshots.",
-    {
-      viewName: z.string().default("MCP_3D_Verification"),
-      detailLevel: z.enum(["Coarse", "Medium", "Fine"]).default("Fine"),
-      activate: z.boolean().default(true),
-    },
-    async (args) => {
-      try {
-        const response = await withRevitConnection(async (revitClient) => {
-          return await revitClient.sendCommand("switch_or_create_3d_view", args);
-        });
-        return { content: [{ type: "text", text: JSON.stringify(response, null, 2) }] };
-      } catch (error) {
-        return {
-          content: [
-            {
-              type: "text",
-              text: `Switch or create 3D view failed: ${error instanceof Error ? error.message : String(error)}`,
-            },
-          ],
-        };
-      }
-    }
-  );
-}
-'@
-}
-
 function Get-SwitchOrCreate3DViewCommand {
 @'
 using Autodesk.Revit.DB;
@@ -226,8 +189,7 @@ if ($proposal.commandName -ne "switch_or_create_3d_view") {
 }
 
 $created = @()
-$created += Write-GeneratedFile -RelativePath "mcp-servers-for-revit/server/src/tools/switch_or_create_3d_view.ts" -Content (Get-SwitchOrCreate3DViewTypeScript)
-$created += Write-GeneratedFile -RelativePath "mcp-servers-for-revit/commandset/Commands/SwitchOrCreate3DViewCommand.cs" -Content (Get-SwitchOrCreate3DViewCommand)
+$created += Write-GeneratedFile -RelativePath "src/RevitMcpCommandSet/Commands/SwitchOrCreate3DViewCommand.cs" -Content (Get-SwitchOrCreate3DViewCommand)
 $created += Write-GeneratedFile -RelativePath "src/RevitHarness/evals/live/eval-switch-or-create-3d-view.ps1" -Content (Get-LiveEval)
 $created += Write-GeneratedFile -RelativePath "src/RevitHarness/generated-snippets/AccessTools.switch_or_create_3d_view.cs.txt" -Content (Get-CSharpWrapperSnippet)
 $created += Write-GeneratedFile -RelativePath "src/RevitHarness/generated-snippets/command-json.switch_or_create_3d_view.json" -Content (Get-ManifestEntry)
@@ -241,8 +203,9 @@ $created += Write-GeneratedFile -RelativePath "src/RevitHarness/generated-snippe
     nextSteps = @(
         "Review generated files.",
         "When applying, insert the C# wrapper snippet into src/RevitMcpServer/Tools/AccessTools.cs.",
-        "When applying, insert the command manifest entry into mcp-servers-for-revit/command.json.",
+        "When applying, insert the command manifest entry into src/RevitMcpCommandSet/command.json.",
         "Run dotnet build src/RevitMcpServer.sln -c Release.",
+        "Run dotnet build src/RevitMcpCommandSet/RevitMCPCommandSet.csproj -c \"Release R25\".",
         "Run the command-specific live eval with Revit open."
     )
 } | ConvertTo-Json -Depth 20

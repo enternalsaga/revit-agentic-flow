@@ -54,7 +54,7 @@ public static class UtilityTools
     {
         var commandJsonPath = Path.Combine(AppContext.BaseDirectory, "command.json");
         if (!File.Exists(commandJsonPath))
-            commandJsonPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "mcp-servers-for-revit", "command.json"));
+            commandJsonPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "RevitMcpCommandSet", "command.json"));
 
         JArray commands = [];
         if (File.Exists(commandJsonPath))
