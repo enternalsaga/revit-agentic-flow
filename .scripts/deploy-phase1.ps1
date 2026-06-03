@@ -25,7 +25,7 @@ $commandTarget = Join-Path $commandSetRoot $RevitVersion
 New-Item -ItemType Directory -Path $target -Force | Out-Null
 New-Item -ItemType Directory -Path $commandTarget -Force | Out-Null
 
-$pluginOutput = Join-Path $repoRoot "src\RevitMcpPlugin\bin\Release\$targetFramework"
+$pluginOutput = Join-Path $repoRoot "build\bin\RevitMcpPlugin\Release\$targetFramework"
 $commandOutput = Join-Path $repoRoot "mcp-servers-for-revit\commandset\bin\$commandConfig"
 
 Copy-Item (Join-Path $pluginOutput "*") -Destination $target -Recurse -Force

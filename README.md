@@ -110,114 +110,7 @@ Nếu mã nguồn C# (trong `plugin/` hoặc `commandset/`) được cập nhậ
 
 ---
 
-## 4. Revit Self-Improve Harness
- 
-Bộ harness giúp bạn **chẩn đoán, kiểm thử, và cải tiến** hệ thống Revit MCP một cách có hệ thống. Thay vì phải tự debug kết nối, so sánh command bằng tay, hay ghi nhớ lỗi trong đầu — harness tự động hóa toàn bộ quy trình này qua một CLI hợp nhất.
- 
-### Harness giải quyết vấn đề gì?
- 
-| Vấn đề thường gặp | Lệnh CLI | Giải pháp |
-|---|---|---|
-| Không biết Revit plugin đã kết nối chưa | `.\harness check` | Kiểm tra transport và báo cáo trạng thái |
-| Command có trong code nhưng runtime không thấy | `.\harness registry` | Phát hiện drift giữa 4 layer |
-| Gọi lệnh Revit bị lỗi JSON do shell quoting | `.\harness invoke <tên_lệnh>` | Tự xử lý params qua file JSON |
-| Lỗi lặp lại nhưng không ai nhớ pattern | `.\harness classify <file>` | Phân loại lỗi và gợi ý cách sửa |
-| Thiếu command cho thao tác phổ biến | `.\harness gap <subcommand>` | Phát hiện, đề xuất và tạo code mẫu (scaffold) |
- 
-### Kiểm tra kết nối trước khi làm việc
- 
-Chạy lệnh này **mỗi khi mở Revit** để xác nhận mọi thứ sẵn sàng:
- 
-```batch
-.\harness check
-```
- 
-Kết quả cho bạn biết:
-- ✅ Transport nào đang hoạt động (Named Pipe / JSON-RPC)
-- 📊 Số lượng command ở từng layer (manifest, TypeScript, C#, commandset)
-- ⚠️ Command nào bị drift (có trong source nhưng runtime thiếu)
-- 💡 Hướng dẫn xử lý cụ thể cho session hiện tại
- 
-### Kiểm tra command coverage
- 
-Muốn biết command nào đã có đầy đủ ở cả 4 layer, command nào còn thiếu wrapper:
- 
-```batch
-.\harness registry
-```
- 
-Lệnh này so sánh: `command.json` ↔ TypeScript tools ↔ C# MCP wrappers ↔ Commandset implementations, và liệt kê chính xác chỗ nào còn gap.
- 
-### Gọi lệnh Revit an toàn
- 
-Thay vì tự viết JSON-RPC call và bị lỗi quoting, dùng CLI wrapper:
- 
-```batch
-# Gọi đơn giản
-.\harness invoke get_project_info
- 
-# Gọi với params phức tạp (truyền qua file)
-.\harness invoke create_level --params-file .\params.json --timeout 60
-
-```
-
-Kết quả luôn trả về dạng chuẩn — có `success`, `durationMs`, `error.categoryHint` nếu lỗi — giúp bạn debug nhanh hơn.
- 
-### Phân loại lỗi
- 
-Khi command trả lỗi, chạy classifier để biết nguyên nhân thuộc loại nào:
- 
-```batch
-.\harness classify .\error-output.json
-```
- 
-Hệ thống phân loại thành các nhóm rõ ràng: `json_quoting` (lỗi quoting), `missing_family` (thiếu family type), `view_missing` (thiếu view), `command_not_registered` (command chưa đăng ký)... kèm gợi ý cách khắc phục.
- 
-### Chạy bộ kiểm thử (Evals)
- 
-Sau khi sửa code plugin hoặc thêm command mới, chạy eval để đảm bảo không gì bị hỏng:
- 
-```batch
-# Kiểm thử offline (không cần mở Revit)
-.\harness evals
- 
-# Kiểm thử đầy đủ (tự bỏ qua nếu Revit chưa mở)
-.\harness evals --live
-```
- 
-- **Offline evals**: kiểm tra bootstrap, registry, invoke-command, classifier, trace writer hoạt động đúng.
-- **Live evals**: tạo thử level/grid, wall/floor, 3D view, chụp snapshot — chỉ chạy khi Revit đang mở.
- 
-### Đề xuất command mới (Command Gap Resolver)
- 
-Khi bạn phát hiện một thao tác Revit phổ biến nhưng chưa có command chuyên dụng, quy trình 3 bước:
- 
-**Bước 1 — Phát hiện gap:**
-```batch
-.\harness gap detect .revit-harness\runs\<run_id>\trace.json
-```
- 
-**Bước 2 — Tạo proposal để review:**
-```batch
-.\harness gap propose .revit-harness\command-gaps\<gap_id>.json
-```
- 
-Proposal chứa: tên command, input/output schema, file cần tạo, eval plan. Bạn review và duyệt trước khi tiếp.
- 
-**Bước 3 — Scaffold code (sau khi duyệt):**
-```batch
-# Xem trước sẽ tạo file gì (không chạm source)
-.\harness gap scaffold .revit-harness\command-proposals\<proposal_id>.json --dry-run
- 
-# Tạo source files thật
-.\harness gap scaffold .revit-harness\command-proposals\<proposal_id>.json
-```
- 
-> ⚠️ Harness **không bao giờ** tự build, deploy, restart Revit, hay commit code. Mọi thay đổi source đều cần bạn review và duyệt.
-
----
-
-## 5. Quy Trình Tự Động Hóa Với Trợ Lý AI (Agentic Workflows & Skills)
+## 4. Quy Trình Tự Động Hóa Với Trợ Lý AI (Agentic Workflows & Skills)
 
 Để giúp bạn tối ưu hóa hiệu suất làm việc, dự án tích hợp sẵn bộ quy trình và kỹ năng tự động hóa chuyên biệt dành cho các trợ lý AI (như Claude Code, Cursor, Cline) khi tương tác với Revit.
 
@@ -230,6 +123,30 @@ Khi giao tiếp với AI trong cửa sổ chat, bạn có thể sử dụng các
 Trợ lý AI sẽ tự động nhận diện và áp dụng các kỹ năng chuyên sâu được lưu trữ tại thư mục `.agents/skills/` để hỗ trợ bạn:
 * **Dựng hình chuẩn xác (`run-revit-mcp`):** Khi bạn ra lệnh dựng hình, AI sẽ tự động tuân thủ quy trình 4 bước (*Chẩn đoán ➔ Lập kế hoạch ➔ Thực thi ➔ Xác thực*), ưu tiên sử dụng cấu kiện BIM gốc của Revit và bắt buộc chụp ảnh snapshot thực tế của dự án để bạn nghiệm thu trực quan.
 * **Tạo câu lệnh mới (`revit-mcp-command`):** Hỗ trợ lập trình viên sinh mã nguồn mẫu cho các command Revit mới và tự động triển khai lên máy chủ MCP.
+
+
+---
+
+## 5. Revit Self-Improve Harness
+ 
+Bộ harness là CLI chẩn đoán và kiểm thử cho Revit MCP. Khi bắt đầu làm việc hoặc sau khi mở lại Revit, chạy:
+
+```batch
+.\harness check
+```
+
+Các thao tác thường dùng:
+
+| Mục đích | Lệnh |
+|---|---|
+| Kiểm tra kết nối Revit/plugin | `.\harness check` |
+| Kiểm tra command coverage/drift | `.\harness registry` |
+| Gọi command Revit an toàn qua JSON params | `.\harness invoke <tên_lệnh>` |
+| Phân loại lỗi từ output | `.\harness classify <file>` |
+| Phát hiện và đề xuất command còn thiếu | `.\harness gap <subcommand>` |
+| Chạy bộ kiểm thử harness | `.\harness evals` hoặc `.\harness evals --live` |
+
+Với trợ lý AI, dùng command **`/harness`** để tự động chạy workflow chẩn đoán. Chi tiết workflow nằm trong `.claude/commands/harness.md`; quy trình phát hiện command thiếu nằm trong skill reference `.claude/skills/run-revit-mcp/references/command-gap-workflow.md`.
 
 ---
 

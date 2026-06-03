@@ -16,7 +16,77 @@ model/*.dll
 /.claude
 .env
 
+# =============================================================================
+# C# / .NET Build Outputs
+# =============================================================================
+
+# Build results
+/build/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+publish/
+artifacts/
+
+# Visual Studio cache/options
+.vs/
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+project.lock.json
+project.fragment.lock.json
+
+# Build log and intermediate files
+*.pdb
+*.ilk
+*.log
+*.tlog
+*.binlog
+*.[Cc]ache
+!?*.[Cc]ache/
+
+# MSTest / NUnit / xUnit results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+BenchmarkDotNet.Artifacts/
+
+# ReSharper / JetBrains
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.sln.iml
+.idea/
+
+# Node.js (for legacy mcp-servers-for-revit)
+node_modules/
+
+# =============================================================================
 # Revit harness runtime output
+# =============================================================================
 src/RevitHarness/evals/results/
 .revit-harness/runs/
 .revit-harness/cache/
@@ -25,3 +95,4 @@ src/RevitHarness/evals/results/
 .revit-harness/command-gaps/
 .revit-harness/command-proposals/
 .revit-harness/command-scaffolds/
+/.docs
