@@ -111,7 +111,7 @@ Use `.agents/skills/run-revit-mcp/references/tool-reference.md` when mapping tas
 
 #### Tools Missing from ToolSearch (Stale Session Issue)
 
-**All 68+ tools have BOTH TypeScript wrappers AND C# commands.** If `ToolSearch` returns fewer tools than expected, the MCP server was started from an older build. This is the #1 cause of "tool not found" errors (see LL-010).
+**All 68+ tools have C# wrappers and commands.** If `ToolSearch` returns fewer tools than expected, the MCP server was started from an older build. This is the #1 cause of "tool not found" errors (see LL-010).
 
 **Diagnosis:** Compare `ToolSearch` count vs expected 68+. If missing, the session is stale.
 
