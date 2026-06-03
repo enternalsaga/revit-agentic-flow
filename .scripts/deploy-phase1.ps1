@@ -14,7 +14,7 @@ $commandConfig = if ($RevitVersion -eq "2024") { "Release R24" } else { "Release
 
 if (-not $SkipBuild) {
     dotnet build (Join-Path $repoRoot "src\RevitMcpPlugin\RevitMcpPlugin.csproj") -c Release -f $targetFramework
-    dotnet build (Join-Path $repoRoot "mcp-servers-for-revit\commandset\RevitMCPCommandSet.csproj") -c $commandConfig
+    dotnet build (Join-Path $repoRoot "src\RevitMcpCommandSet\RevitMCPCommandSet.csproj") -c $commandConfig
 }
 
 $addins = Join-Path $env:APPDATA "Autodesk\Revit\Addins\$RevitVersion"
@@ -26,11 +26,11 @@ New-Item -ItemType Directory -Path $target -Force | Out-Null
 New-Item -ItemType Directory -Path $commandTarget -Force | Out-Null
 
 $pluginOutput = Join-Path $repoRoot "build\bin\RevitMcpPlugin\Release\$targetFramework"
-$commandOutput = Join-Path $repoRoot "mcp-servers-for-revit\commandset\bin\$commandConfig"
+$commandOutput = Join-Path $repoRoot "src\RevitMcpCommandSet\bin\$commandConfig"
 
 Copy-Item (Join-Path $pluginOutput "*") -Destination $target -Recurse -Force
 Copy-Item (Join-Path $commandOutput "*") -Destination $commandTarget -Recurse -Force
-Copy-Item (Join-Path $repoRoot "mcp-servers-for-revit\command.json") -Destination (Join-Path $commandSetRoot "command.json") -Force
+Copy-Item (Join-Path $repoRoot "src\RevitMcpCommandSet\command.json") -Destination (Join-Path $commandSetRoot "command.json") -Force
 
 $assembly = Join-Path $target "RevitMcpPlugin.dll"
 $addinPath = Join-Path $addins "revit-mcp-v2.addin"
