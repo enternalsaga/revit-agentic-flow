@@ -24,6 +24,7 @@ namespace RevitMcpPlugin.AI
         private readonly string _endpoint;
         private readonly HttpClient _httpClient;
         private readonly Dictionary<string, string>? _customHeaders;
+        private readonly bool _isGeminiAuth;
 
         public string ProviderName => "openai";
         public string ModelId => _modelId;
@@ -40,19 +41,27 @@ namespace RevitMcpPlugin.AI
             _modelId = modelId;
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _customHeaders = config.Headers;
-            _endpoint = BuildEndpoint(config.BaseUrl);
+            _isGeminiAuth = config.BaseUrl?.Contains("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) == true;
+            _endpoint = BuildEndpoint(config.BaseUrl ?? "", _isGeminiAuth ? _apiKey : null);
         }
 
-        private static string BuildEndpoint(string baseUrl)
+        private static string BuildEndpoint(string baseUrl, string? geminiApiKey = null)
         {
             if (string.IsNullOrEmpty(baseUrl))
                 return "https://api.openai.com/v1/chat/completions";
 
             var trimmed = baseUrl.TrimEnd('/');
             if (trimmed.EndsWith("/v1/chat/completions", StringComparison.OrdinalIgnoreCase))
+            {
+                if (geminiApiKey != null)
+                    return $"{trimmed}?key={geminiApiKey}";
                 return trimmed;
+            }
 
-            return $"{trimmed}/v1/chat/completions";
+            var endpoint = $"{trimmed}/v1/chat/completions";
+            if (geminiApiKey != null)
+                endpoint += $"?key={geminiApiKey}";
+            return endpoint;
         }
 
         public async Task<JObject> SendNonStreamingAsync(
@@ -78,7 +87,8 @@ namespace RevitMcpPlugin.AI
             {
                 request.Content = new StringContent(
                     requestBody.ToString(Formatting.None), Encoding.UTF8, "application/json");
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+                if (!_isGeminiAuth)
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
                 AddCustomHeaders(request);
 
                 using (var response = await _httpClient.SendAsync(request, ct))
@@ -114,7 +124,8 @@ namespace RevitMcpPlugin.AI
             {
                 request.Content = new StringContent(
                     requestBody.ToString(Formatting.None), Encoding.UTF8, "application/json");
-                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
+                if (!_isGeminiAuth)
+                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
                 request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
                 AddCustomHeaders(request);
 

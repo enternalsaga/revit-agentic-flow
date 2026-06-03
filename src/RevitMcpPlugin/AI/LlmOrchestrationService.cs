@@ -17,7 +17,6 @@ namespace RevitMcpPlugin.AI;
 /// </summary>
 public class LlmOrchestrationService
 {
-    private static readonly HttpClient _httpClient = CreateHttpClient();
 
     private readonly ILlmProvider _provider;
 
@@ -364,13 +363,7 @@ public class LlmOrchestrationService
                message.IndexOf("maximum context length", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
-    private static HttpClient CreateHttpClient()
-    {
-        return new HttpClient
-        {
-            Timeout = TimeSpan.FromMinutes(5)
-        };
-    }
+
 }
 
 // ───────────────────────────── result types ─────────────────────────────

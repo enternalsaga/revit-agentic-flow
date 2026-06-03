@@ -13,6 +13,7 @@ public class App : IExternalApplication
     private const string TabName = "Revit MCP";
     private const string PanelName = "MCP Control";
 
+    private AiPanelProvider? _aiPanelProvider;
     internal static PipeService? Service { get; private set; }
 
     public Result OnStartup(UIControlledApplication application)
@@ -44,7 +45,8 @@ public class App : IExternalApplication
         }
 
         // Register the AI Chat dockable pane
-        application.RegisterDockablePane(AiPanelProvider.PanelId, "AI Chat", new AiPanelProvider());
+        _aiPanelProvider = new AiPanelProvider();
+        application.RegisterDockablePane(AiPanelProvider.PanelId, "AI Chat", _aiPanelProvider);
 
         // Add AI Chat button to the ribbon panel
         var aiChatData = new PushButtonData(
@@ -66,6 +68,8 @@ public class App : IExternalApplication
     public Result OnShutdown(UIControlledApplication application)
     {
         StopService();
+        _aiPanelProvider?.Dispose();
+        _aiPanelProvider = null;
         return Result.Succeeded;
     }
 

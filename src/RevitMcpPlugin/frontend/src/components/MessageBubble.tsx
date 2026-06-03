@@ -1,3 +1,5 @@
+import Markdown from 'react-markdown';
+import CodeBlock from './CodeBlock';
 import { ChatMessage } from '../types';
 
 interface Props {
@@ -20,10 +22,38 @@ export default function MessageBubble({ message }: Props) {
         color: isUser ? '#fff' : 'var(--color-text-primary)',
         fontSize: 'var(--text-sm)',
         lineHeight: 'var(--leading-normal)',
-        whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
       }}>
-        {message.text}
+        {isUser ? (
+          <span style={{ whiteSpace: 'pre-wrap' }}>{message.text}</span>
+        ) : (
+          <Markdown
+            components={{
+              code({ className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '');
+                const codeStr = String(children).replace(/\n$/, '');
+                if (match) {
+                  return <CodeBlock code={codeStr} language={match[1]} />;
+                }
+                return (
+                  <code
+                    style={{
+                      background: 'var(--color-bg-code)',
+                      padding: '1px 4px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 'var(--text-xs)',
+                    }}
+                    {...props}
+                  >
+                    {children}
+                  </code>
+                );
+              },
+            }}
+          >
+            {message.text}
+          </Markdown>
+        )}
         {message.toolCalls && message.toolCalls.length > 0 && (
           <div style={{ marginTop: 'var(--space-xs)', fontSize: 'var(--text-xs)', opacity: 0.7 }}>
             {message.toolCalls.map((tc, i) => (

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { sendToBackend, onBackendMessage } from './bridge';
 import { ChatMessage, AiSettings, ViewMode } from './types';
 import ChatPanel from './components/ChatPanel';
@@ -11,24 +11,29 @@ export default function App() {
   const [streamingText, setStreamingText] = useState('');
   const [statusText, setStatusText] = useState<string | null>(null);
   const [settings, setSettings] = useState<AiSettings | null>(null);
+  const streamingTextRef = useRef('');
 
   // Register backend message handlers once
-  useState(() => {
+  useEffect(() => {
     onBackendMessage('streaming_delta', (payload) => {
-      const text = (payload as string) || '';
-      setStreamingText(prev => prev + text);
+      const data = payload as { delta?: string } | null;
+      const text = data?.delta || '';
+      streamingTextRef.current += text;
+      setStreamingText(streamingTextRef.current);
     });
 
     onBackendMessage('streaming_end', (payload) => {
-      const data = payload as any;
+      const data = payload as { text?: string } | null;
+      const finalText = data?.text || streamingTextRef.current;
       setMessages(prev => {
         const updated = [...prev];
         if (updated.length > 0 && !updated[updated.length - 1].isUser) {
           const last = updated[updated.length - 1];
-          updated[updated.length - 1] = { ...last, text: data?.text || streamingText || last.text };
+          updated[updated.length - 1] = { ...last, text: finalText || last.text };
         }
         return updated;
       });
+      streamingTextRef.current = '';
       setStreamingText('');
       setIsStreaming(false);
       setStatusText(null);
@@ -41,7 +46,7 @@ export default function App() {
     onBackendMessage('settings_loaded', (payload) => {
       setSettings(payload as AiSettings);
     });
-  });
+  }, []);
 
   const handleSend = (text: string) => {
     if (!text.trim()) return;
@@ -49,6 +54,7 @@ export default function App() {
     setMessages(prev => [...prev, userMsg]);
     // Add placeholder assistant message
     setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), text: '', isUser: false }]);
+    streamingTextRef.current = '';
     setStreamingText('');
     setIsStreaming(true);
     sendToBackend('send_message', { text });

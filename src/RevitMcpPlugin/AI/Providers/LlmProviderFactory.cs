@@ -5,7 +5,7 @@ namespace RevitMcpPlugin.AI;
 
 public static class LlmProviderFactory
 {
-    private static readonly HttpClient SharedHttpClient = new();
+    private static readonly HttpClient SharedHttpClient = new() { Timeout = TimeSpan.FromMinutes(5) };
 
     public static ILlmProvider Create(ProviderConfig provider, string modelId)
     {

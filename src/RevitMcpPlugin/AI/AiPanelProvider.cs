@@ -279,5 +279,6 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
         _bridge?.Dispose();
+        _webView?.Dispose();
     }
 }

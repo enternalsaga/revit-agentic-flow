@@ -123,7 +123,7 @@ namespace RevitMcpPlugin.AI
                     },
                     ["deepseek"] = new ProviderConfig
                     {
-                        Protocol = "anthropic",
+                        Protocol = "openai",
                         BaseUrl = "https://api.deepseek.com",
                         ApiKey = "",
                         Models = new List<ModelInfo>
@@ -133,7 +133,7 @@ namespace RevitMcpPlugin.AI
                     },
                     ["glm"] = new ProviderConfig
                     {
-                        Protocol = "anthropic",
+                        Protocol = "openai",
                         BaseUrl = "https://open.bigmodel.cn/api/paas",
                         ApiKey = "",
                         Models = new List<ModelInfo>
@@ -143,7 +143,7 @@ namespace RevitMcpPlugin.AI
                     },
                     ["openrouter"] = new ProviderConfig
                     {
-                        Protocol = "anthropic",
+                        Protocol = "openai",
                         BaseUrl = "https://openrouter.ai/api",
                         ApiKey = "",
                         Models = new List<ModelInfo>
