@@ -97,3 +97,9 @@ src/RevitHarness/evals/results/
 .revit-harness/command-scaffolds/
 /.docs
 /image
+
+# =============================================================================
+# AI Chat Panel (frontend assets & node_modules)
+# =============================================================================
+src/RevitMcpPlugin/wwwroot/
+src/RevitMcpPlugin/frontend/node_modules/
