@@ -1,4 +1,5 @@
 using Autodesk.Revit.UI;
+using RevitMcpPlugin.AI;
 using RevitMcpPlugin.Configuration;
 using RevitMcpPlugin.Core;
 using System.Windows;
@@ -40,6 +41,23 @@ public class App : IExternalApplication
             var icon = CreateIcon(Color.FromRgb(0, 120, 215));
             settingsButton.Image = icon;
             settingsButton.LargeImage = icon;
+        }
+
+        // Register the AI Chat dockable pane
+        application.RegisterDockablePane(AiPanelProvider.PanelId, "AI Chat", new AiPanelProvider());
+
+        // Add AI Chat button to the ribbon panel
+        var aiChatData = new PushButtonData(
+            "RevitMcpAiChat", "AI Chat",
+            typeof(App).Assembly.Location,
+            typeof(AiPanelCommand).FullName);
+        aiChatData.ToolTip = "Open AI Chat panel for interacting with Revit via LLM.";
+
+        if (panel.AddItem(aiChatData) is PushButton aiChatButton)
+        {
+            var aiIcon = CreateIcon(Color.FromRgb(106, 90, 205));
+            aiChatButton.Image = aiIcon;
+            aiChatButton.LargeImage = aiIcon;
         }
 
         return Result.Succeeded;

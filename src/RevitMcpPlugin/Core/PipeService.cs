@@ -23,6 +23,7 @@ public class PipeService
     }
 
     public bool IsRunning => _running;
+    public CommandExecutor Executor => _executor;
 
     public void Start()
     {
