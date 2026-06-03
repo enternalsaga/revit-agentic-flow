@@ -97,13 +97,12 @@ Use this list as the ground truth for which tools you can call. Do NOT rely on y
 
 **If `list_available_commands` is not available:** The MCP server may need a restart to pick up this new tool. Inform the user: "Tool `list_available_commands` chưa có trong session này. Bạn cần restart MCP client để nhận tool mới." Then fall back to attempting dedicated tools directly — try calling them and handle errors gracefully rather than preemptively using `send_code_to_revit`.
 
-**If Revit MCP tools are not exposed in the current agent session but Revit is running:** inspect the local server bridge before giving up. The Revit plugin normally listens on TCP `localhost:8080` and accepts JSON-RPC payloads shaped like:
+**If Revit MCP tools are not exposed in the current agent session but Revit is running:** use the Phase 1 C# harness and Named Pipe diagnostics first:
+1. Run `.\harness check`.
+2. Run `.\src\RevitHarness\registry-report.ps1`.
+3. Confirm the Phase 1 add-in is deployed under `%APPDATA%\Autodesk\Revit\Addins\<version>\revit-mcp-v2`.
 
-```json
-{"jsonrpc":"2.0","method":"get_project_info","params":{},"id":"test"}
-```
-
-Use this socket bridge only as a transport fallback when callable MCP tool namespaces are missing from the agent environment. Still preserve the same modeling policy: discover commands, prefer dedicated commands, and document any use of `send_code_to_revit`.
+Still preserve the same modeling policy: discover commands, prefer dedicated commands, and document any use of `send_code_to_revit`.
 
 ### Tool Reference
 
@@ -330,7 +329,7 @@ At the end of the report, include a tool usage breakdown so the user can verify 
 - If the user provides an image/drawing, extract ALL dimensions before starting. Ask if anything is unclear.
 - Respond to the user in Vietnamese (per project rules).
 - **Do not assume tools don't exist. Try them first.**
-- If direct MCP tool namespaces are unavailable, test the Revit TCP JSON-RPC bridge on `localhost:8080` before reporting a blocker.
+- If direct MCP tool namespaces are unavailable but Revit is running, use the Phase 1 C# harness and Named Pipe diagnostics first: run `.\harness check`, then `.\src\RevitHarness\registry-report.ps1`, and confirm the Phase 1 add-in is deployed.
 - Use `.agents/skills/run-revit-mcp/scripts/Invoke-RevitMcpJsonRpc.ps1` for JSON-RPC calls and compile+run helper DLL workflows.
 - Keep socket payloads small; use compiled helper DLLs for long C# modeling logic.
 - When dynamically loading helper DLLs, rebuild to a versioned filename after each change because Revit locks loaded assemblies. The bundled helper script does this automatically.

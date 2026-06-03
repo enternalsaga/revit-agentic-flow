@@ -7,9 +7,8 @@ Tài liệu này hướng dẫn cách thiết lập và sử dụng bộ công c
 ## 1. Cài đặt (Installation)
 
 ### Yêu cầu hệ thống
-- **Autodesk Revit** (Hỗ trợ bản 2023, 2024, 2025, 2026 - ưu tiên 2024 theo thiết lập mặc định).
-- **Node.js 18+** (Để chạy phần MCP Server bằng TypeScript).
-- **.NET 8.0 SDK** (Yêu cầu cài đặt để có thể biên dịch mã nguồn C# của Plugin).
+- **Autodesk Revit** (Hỗ trợ bản 2024, 2025).
+- **.NET 8.0 SDK** (Yêu cầu cài đặt để có thể biên dịch mã nguồn C# của MCP Server và Plugin).
   - *Cách 1 (Nếu có quyền Admin)*: Tải và cài đặt file `.exe` từ [trang chủ Microsoft](https://dotnet.microsoft.com/download/dotnet/8.0).
   - *Cách 2 (Nếu KHÔNG có quyền Admin)*: Mở PowerShell và chạy lần lượt các lệnh sau để cài đặt cục bộ vào thư mục User Profile:
     ```powershell
@@ -55,11 +54,9 @@ Thêm cấu hình sau vào file thiết lập MCP (ví dụ `claude_desktop_conf
 ```json
 {
   "mcpServers": {
-    "mcp-server-for-revit": {
-      "command": "node",
-      "args": [
-        "H:\\OneDrive\\Work\\AI\\Work\\MCP_Revit\\mcp-servers-for-revit\\server\\build\\index.js"
-      ]
+    "revit-mcp": {
+      "type": "stdio",
+      "command": "C:\\Users\\baoanh.nguyen\\OneDrive - The Design Lab\\Work\\MCP_Revit\\src\\RevitMcpServer\\bin\\Release\\net8.0-windows\\win-x64\\publish\\RevitMcpServer.exe"
     }
   }
 }
@@ -69,7 +66,7 @@ Thêm cấu hình sau vào file thiết lập MCP (ví dụ `claude_desktop_conf
 **Đối với Claude Code (CLI):**
 Mở terminal và chạy lệnh:
 ```bash
-claude mcp add revit-mcp -- node H:\OneDrive\Work\AI\Work\MCP_Revit\mcp-servers-for-revit\server\build\index.js
+claude mcp add revit-mcp -- "C:\Users\baoanh.nguyen\OneDrive - The Design Lab\Work\MCP_Revit\src\RevitMcpServer\bin\Release\net8.0-windows\win-x64\publish\RevitMcpServer.exe"
 ```
 
 ---
@@ -88,25 +85,20 @@ claude mcp add revit-mcp -- node H:\OneDrive\Work\AI\Work\MCP_Revit\mcp-servers-
 
 ## 3. Cập nhật (Update)
 
-Trong quá trình phát triển, khi có cập nhật code C# (plugin) hoặc TypeScript (server), bạn cần thực hiện theo các bước sau để làm mới hệ thống:
+Trong quá trình phát triển, khi có cập nhật code C# (MCP server, plugin, hoặc commandset), bạn cần thực hiện theo các bước sau để làm mới hệ thống:
 
-### Cập nhật MCP Server (Phần Node.js/TypeScript)
-Nếu phần định nghĩa công cụ (trong thư mục `server/`) có sự thay đổi:
-1. Mở Terminal, di chuyển vào thư mục `mcp-servers-for-revit/server`.
-2. Chạy lệnh để cài đặt thư viện và build lại mã nguồn:
-   ```bash
-   npm install
-   npm run build
-   ```
-3. Khởi động lại AI Client (Claude/Cursor) để nó kết nối lại và nhận diện danh sách các tools mới.
-
-### Cập nhật Plugin Revit (Phần C# DLL)
+### Cập nhật MCP Server và Plugin (Phần C#)
 Nếu mã nguồn C# (trong `plugin/` hoặc `commandset/`) được cập nhật:
 1. **Tắt hẳn Revit** (điều này bắt buộc vì nếu Revit đang mở, các file DLL sẽ bị khóa và không thể chép đè).
-2. Bạn có hai cách để build và cài đặt lại plugin:
-   - **Cách 1 (Nhanh nhất):** Chạy script `build_and_install.bat` ở thư mục gốc của dự án. Script này sẽ tự động chạy lệnh `dotnet build` để biên dịch rồi copy file vào thư mục Addins của Revit.
-   - **Cách 2 (Visual Studio):** Mở file `mcp-servers-for-revit.sln` bằng Visual Studio. Chọn đúng cấu hình Build (Configuration) cho phiên bản Revit bạn đang dùng (ví dụ: `Debug R24` cho Revit 2024), tiến hành Build solution (F6), sau đó chạy `install.bat` để copy file.
-3. Mở lại Revit. Plugin mới nhất đã được áp dụng.
+2. Build MCP server, commandset, và deploy plugin:
+   ```powershell
+   dotnet build .\src\RevitMcpServer.sln -c Release
+   dotnet publish .\src\RevitMcpServer\RevitMcpServer.csproj -c Release -r win-x64 --self-contained
+   .\.scripts\deploy-phase1.ps1 -RevitVersion 2024
+   ```
+   (Thay `2024` bằng `2025` tùy phiên bản Revit bạn đang dùng.)
+3. Khởi động lại AI Client (Claude/Cursor) để nó kết nối lại và nhận diện danh sách các tools mới.
+4. Mở lại Revit. Plugin mới nhất đã được áp dụng.
 
 ---
 

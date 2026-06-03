@@ -6,9 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 MCP (Model Context Protocol) server for Autodesk Revit. It enables AI assistants to read, create, modify, and delete elements in Revit projects.
 
-The repository now has a Phase 1 C# MCP server alongside the original TypeScript/WebSocket implementation. Prefer the C# Phase 1 path for Revit 2024 and Revit 2025 work unless a task explicitly targets the legacy server.
-
-## Phase 1 C# Architecture
+## Architecture
 
 Primary execution chain:
 
@@ -19,8 +17,8 @@ AI Client <--stdio--> RevitMcpServer (C# MCP) <--named pipe: revit-mcp--> RevitM
 - **`src/RevitMcpServer/`** - .NET 8 stdio MCP server. Tool wrappers live in `Tools/` and forward JSON-RPC requests through `Pipes/PipeClient`.
 - **`src/RevitMcpSdk/`** - shared SDK contracts and JSON-RPC models used by the server and plugin.
 - **`src/RevitMcpPlugin/`** - Revit add-in for 2024 (`net48`) and 2025 (`net8.0-windows`). It starts a named pipe service, dispatches requests through `CommandExecutor`, and loads command assemblies via `CommandManager`.
-- **`mcp-servers-for-revit/commandset/`** - existing Revit command implementations. Phase 1 loads the legacy `RevitMCPSDK` commandset through a reflection adapter.
-- **`mcp-servers-for-revit/command.json`** - command manifest used by the plugin configuration sync.
+- **`src/RevitMcpCommandSet/`** - Revit command implementations. The plugin loads this assembly via `CommandManager`.
+- **`src/RevitMcpCommandSet/command.json`** - command manifest used by the plugin configuration sync.
 
 Named pipe protocol:
 - Pipe name: `revit-mcp`
@@ -28,7 +26,7 @@ Named pipe protocol:
 - Server timeout: 120 seconds per Revit command
 - Pipe connect timeout: 5 seconds
 
-## Phase 1 Build, Publish, Deploy
+## Build, Publish, Deploy
 
 Build all C# projects:
 
@@ -45,15 +43,15 @@ dotnet publish src/RevitMcpServer/RevitMcpServer.csproj -c Release -r win-x64 --
 Build the Revit 2024 or 2025 commandset:
 
 ```powershell
-dotnet build "mcp-servers-for-revit/commandset/RevitMCPCommandSet.csproj" -c "Release R24"
-dotnet build "mcp-servers-for-revit/commandset/RevitMCPCommandSet.csproj" -c "Release R25"
+dotnet build "src/RevitMcpCommandSet/RevitMCPCommandSet.csproj" -c "Release R24"
+dotnet build "src/RevitMcpCommandSet/RevitMCPCommandSet.csproj" -c "Release R25"
 ```
 
-Deploy Phase 1 plugin layout for Revit 2024 or 2025:
+Deploy plugin layout for Revit 2024 or 2025:
 
 ```powershell
-.\scripts\deploy-phase1.ps1 -RevitVersion 2024
-.\scripts\deploy-phase1.ps1 -RevitVersion 2025
+.\.scripts\deploy-phase1.ps1 -RevitVersion 2024
+.\.scripts\deploy-phase1.ps1 -RevitVersion 2025
 ```
 
 The deploy script writes a version-specific `.addin` file with an absolute assembly path under `%APPDATA%\Autodesk\Revit\Addins\<version>`.
@@ -69,27 +67,6 @@ Claude Desktop MCP config example:
     }
   }
 }
-```
-
-## Legacy TypeScript Architecture
-
-The original implementation remains under `mcp-servers-for-revit/`:
-
-```text
-AI Client <--stdio--> MCP Server (TypeScript) <--WebSocket:8080--> Revit Plugin (C#) --> Command Set (C#) --> Revit API
-```
-
-- **`mcp-servers-for-revit/server/`** - TypeScript MCP server. Each tool is a file in `server/src/tools/` exporting a `register*Tool(server)` function. Uses `withRevitConnection()` from `utils/ConnectionManager.ts`.
-- **`mcp-servers-for-revit/plugin/`** - legacy C# Revit add-in that listens on WebSocket port 8080.
-- **`mcp-servers-for-revit/commandset/`** - shared command implementations used by both legacy and Phase 1 paths.
-
-Legacy server commands:
-
-```bash
-cd mcp-servers-for-revit/server
-npm install
-npm run build
-npx tsx src/index.ts
 ```
 
 ## Tests
@@ -117,17 +94,12 @@ dotnet test -c Debug.R25 -r win-x64 tests/commandset
 
 ## Adding a New MCP Tool
 
-Phase 1:
-1. Add a C# wrapper method in the appropriate `src/RevitMcpServer/Tools/*Tools.cs` file.
+1. Add or update a C# wrapper method in `src/RevitMcpServer/Tools/*Tools.cs`.
 2. Forward to Revit through `PipeClient.SendCommandAsync(commandName, parameters)`.
-3. Add or update the command implementation under `mcp-servers-for-revit/commandset/Commands` and `Services`.
-4. Add the command entry to `mcp-servers-for-revit/command.json`.
-5. Rebuild and redeploy the plugin and commandset.
-
-Legacy TypeScript:
-1. Create `server/src/tools/<tool_name>.ts` exporting `register<ToolName>Tool(server: McpServer)`.
-2. Use `withRevitConnection()` for Revit communication.
-3. Add/update the commandset command and `command.json`.
+3. Add or update the command implementation under `src/RevitMcpCommandSet/Commands` and `Services`.
+4. Add the command entry to `src/RevitMcpCommandSet/command.json`.
+5. Rebuild `src/RevitMcpServer.sln` and `src/RevitMcpCommandSet/RevitMCPCommandSet.csproj` for the target Revit version.
+6. Redeploy with `.\.scripts\deploy-phase1.ps1`.
 
 ## Revit API Lookup
 
@@ -146,7 +118,7 @@ Minimum modeling checks:
 ## Key Constraints
 
 - All elevation and distance units passed to Revit tools are in millimeters.
-- Phase 1 uses named pipe `revit-mcp`; legacy uses WebSocket `localhost:8080`.
+- The MCP server communicates with the Revit add-in via named pipe `revit-mcp`.
 - Revit add-ins must be installed under `%APPDATA%\Autodesk\Revit\Addins\<version>\`.
 - `RevitMcpServer` publish is intentionally untrimmed because MCP tool discovery and plugin command loading use reflection.
 
@@ -161,4 +133,4 @@ Minimum modeling checks:
 
 - Restart the MCP client after adding or renaming MCP tools.
 - Restart Revit after replacing add-in DLLs.
-- If Phase 1 returns `Method not found`, confirm `Commands\RevitMCPCommandSet\command.json` exists below the deployed plugin directory and that `RevitMCPCommandSet.dll` exists in the matching version folder.
+- If the server returns `Method not found`, confirm `RevitMcpCommandSet.dll` and `command.json` exist below the deployed plugin directory for the target Revit version.

@@ -13,7 +13,7 @@ User chạy `/start` khi mở cửa sổ chat mới.
 
 1. `.agents/skills/revit-mcp-command/SKILL.md` — Hướng dẫn tạo command mới
 2. `.agents/lesson_learned.md` — Các lỗi đã gặp, tránh lặp lại
-3. `mcp-servers-for-revit/command.json` — Danh sách commands hiện có
+3. `src/RevitMcpCommandSet/command.json` — Danh sách commands hiện có
 
 ## Bước 2: Kiểm tra kết nối Revit
 Gọi tool MCP `say_hello` để test kết nối:
