@@ -4,7 +4,7 @@ using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Models.Common;
 using RevitMCPCommandSet.Models.Structure;
 using RevitMCPCommandSet.Utils;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {

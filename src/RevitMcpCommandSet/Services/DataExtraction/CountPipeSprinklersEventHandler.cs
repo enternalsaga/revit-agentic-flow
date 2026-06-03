@@ -1,7 +1,8 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Models.DataExtraction;
-using RevitMCPSDK.API.Interfaces;
+using RevitMCPCommandSet.Utils;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services.DataExtraction
 {
@@ -75,7 +76,7 @@ namespace RevitMCPCommandSet.Services.DataExtraction
                             visited.Add(conn.Id);
                             queue.Enqueue(conn);
 
-                            if (conn.Category != null && conn.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Sprinklers)
+                            if (conn.Category != null && RevitIdUtils.ToLong(conn.Category.Id) == (long)BuiltInCategory.OST_Sprinklers)
                             {
                                 sprinklerCount++;
                             }

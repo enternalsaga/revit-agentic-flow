@@ -2,7 +2,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 using RevitMCPCommandSet.Models.Common;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services.DataExtraction
 {

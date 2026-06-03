@@ -1,7 +1,7 @@
 using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Models.Common;
 using RevitMCPCommandSet.Utils;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {
@@ -69,7 +69,7 @@ namespace RevitMCPCommandSet.Services
                     CeilingType ceilingType = null;
                     if (data.TypeId != -1 && data.TypeId != 0)
                     {
-                        ElementId typeELeId = new ElementId(data.TypeId);
+                        ElementId typeELeId = RevitIdUtils.ToElementId(data.TypeId);
                         if (typeELeId != null)
                         {
                             Element typeEle = doc.GetElement(typeELeId);

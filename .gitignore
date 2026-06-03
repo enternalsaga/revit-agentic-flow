@@ -96,3 +96,4 @@ src/RevitHarness/evals/results/
 .revit-harness/command-proposals/
 .revit-harness/command-scaffolds/
 /.docs
+/image

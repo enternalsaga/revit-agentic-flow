@@ -29,6 +29,11 @@ public class ConfigurationManager
         Config = JsonConvert.DeserializeObject<FrameworkConfig>(json) ?? new FrameworkConfig();
     }
 
+    public void SaveConfiguration()
+    {
+        File.WriteAllText(_configPath, JsonConvert.SerializeObject(Config, Formatting.Indented));
+    }
+
     private void SyncWithCommandSets()
     {
         var commandsDir = PathManager.GetCommandsDirectoryPath();

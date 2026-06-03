@@ -2,7 +2,7 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Utils;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {
@@ -81,7 +81,7 @@ namespace RevitMCPCommandSet.Services
                 if (_roomIds != null && _roomIds.Count > 0)
                 {
                     // Get level from specified rooms
-                    var firstRoom = _doc.GetElement(new ElementId(_roomIds[0])) as Room;
+                    var firstRoom = _doc.GetElement(RevitIdUtils.ToElementId(_roomIds[0])) as Room;
                     if (firstRoom != null)
                     {
                         targetLevel = _doc.GetElement(firstRoom.LevelId) as Level;
@@ -163,7 +163,7 @@ namespace RevitMCPCommandSet.Services
                 {
                     // Get specific rooms by ID
                     rooms = _roomIds
-                        .Select(id => _doc.GetElement(new ElementId(id)))
+                        .Select(id => _doc.GetElement(RevitIdUtils.ToElementId(id)))
                         .Where(e => e != null && e is Room)
                         .ToList();
                 }
@@ -374,7 +374,7 @@ namespace RevitMCPCommandSet.Services
             // If specific tag type ID was specified, try to use it
             if (!string.IsNullOrEmpty(_tagTypeId) && int.TryParse(_tagTypeId, out int id))
             {
-                ElementId elementId = new ElementId(id);
+                ElementId elementId = RevitIdUtils.ToElementId(id);
                 Element element = doc.GetElement(elementId);
 
                 if (element != null && element is FamilySymbol symbol &&

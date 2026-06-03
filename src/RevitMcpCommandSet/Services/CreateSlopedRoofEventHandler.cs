@@ -3,7 +3,7 @@ using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Models.Architecture;
 using RevitMCPCommandSet.Models.Common;
 using RevitMCPCommandSet.Utils;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {
@@ -43,7 +43,7 @@ namespace RevitMCPCommandSet.Services
 
                         if (roofData.TypeId > 0)
                         {
-                            ElementId typeEleId = new ElementId(roofData.TypeId);
+                            ElementId typeEleId = RevitIdUtils.ToElementId(roofData.TypeId);
                             Element typeEle = doc.GetElement(typeEleId);
                             if (typeEle is RoofType rt)
                             {

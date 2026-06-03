@@ -88,6 +88,7 @@ Use `say_hello` and `get_current_view_info` as smoke tests.
 Existing commandset integration tests require Revit open:
 
 ```powershell
+dotnet test .\tests\RevitMcpCommandSet.Tests\RevitMCPCommandSet.Tests.csproj -c Debug.R24 -r win-x64
 dotnet test .\tests\RevitMcpCommandSet.Tests\RevitMCPCommandSet.Tests.csproj -c Debug.R25 -r win-x64
 ```
 

@@ -3,7 +3,7 @@ using Autodesk.Revit.DB.Architecture;
 using Autodesk.Revit.DB.Mechanical;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 using RevitMCPCommandSet.Models.Common;
 using RevitMCPCommandSet.Utils;
 using System;
@@ -237,7 +237,7 @@ namespace RevitMCPCommandSet.Services
             // 3. 族符号过滤器 (仅适用于元素实例)
             if (!isElementType && settings.FilterFamilySymbolId > 0)
             {
-                ElementId symbolId = new ElementId(settings.FilterFamilySymbolId);
+                ElementId symbolId = RevitIdUtils.ToElementId(settings.FilterFamilySymbolId);
                 // 检查元素是否存在且是族类型
                 Element symbolElement = doc.GetElement(symbolId);
                 if (symbolElement != null && symbolElement is FamilySymbol)

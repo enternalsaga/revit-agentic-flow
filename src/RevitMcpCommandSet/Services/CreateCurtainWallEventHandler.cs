@@ -2,7 +2,7 @@ using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Models.Architecture;
 using RevitMCPCommandSet.Models.Common;
 using RevitMCPCommandSet.Utils;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {
@@ -46,7 +46,7 @@ namespace RevitMCPCommandSet.Services
 
                             if (wallData.TypeId > 0)
                             {
-                                ElementId typeEleId = new ElementId(wallData.TypeId);
+                                ElementId typeEleId = RevitIdUtils.ToElementId(wallData.TypeId);
                                 Element typeEle = doc.GetElement(typeEleId);
                                 if (typeEle is WallType wt && wt.Kind == WallKind.Curtain)
                                 {

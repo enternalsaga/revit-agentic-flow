@@ -1,9 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <Configurations>Debug.R25;Debug.R26</Configurations>
-    <Configurations>$(Configurations);Release.R25;Release.R26</Configurations>
+    <Configurations>Debug.R24;Debug.R25;Debug.R26</Configurations>
+    <Configurations>$(Configurations);Release.R24;Release.R25;Release.R26</Configurations>
     <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
+  </PropertyGroup>
+  <PropertyGroup Condition="$(Configuration.Contains('R24'))">
+    <RevitVersion>2024</RevitVersion>
+    <TargetFramework>net48</TargetFramework>
+    <ImplicitUsings>true</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition="$(Configuration.Contains('R25'))">
     <RevitVersion>2025</RevitVersion>

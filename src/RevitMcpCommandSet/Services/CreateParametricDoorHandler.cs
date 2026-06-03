@@ -1,7 +1,8 @@
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 using RevitMCPCommandSet.Models.Common;
+using RevitMCPCommandSet.Utils;
 using System;
 using System.Linq;
 using System.Threading;
@@ -81,7 +82,7 @@ namespace RevitMCPCommandSet.Services
                     Wall hostWall = null;
                     if (_hostWallId > 0)
                     {
-                        hostWall = doc.GetElement(new ElementId(_hostWallId)) as Wall;
+                        hostWall = doc.GetElement(RevitIdUtils.ToElementId(_hostWallId)) as Wall;
                     }
                     else
                     {
@@ -116,8 +117,8 @@ namespace RevitMCPCommandSet.Services
                     
                     if (door != null)
                     {
-                        createdId = door.Id.IntegerValue;
-                        message = $"Successfully created door '{newTypeName}' on wall {hostWall.Id.IntegerValue}.";
+                        createdId = RevitIdUtils.ToInt(door.Id);
+                        message = $"Successfully created door '{newTypeName}' on wall {RevitIdUtils.ToLong(hostWall.Id)}.";
                     }
                     else
                     {

@@ -1,6 +1,6 @@
 using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Models.Common;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {
@@ -43,7 +43,7 @@ namespace RevitMCPCommandSet.Services
                     DetailLevel = activeView.DetailLevel.ToString(),
                 };
             }
-            catch (Exception ex)
+            catch
             {
                 TaskDialog.Show("error", "获取信息失败");
             }

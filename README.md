@@ -81,6 +81,44 @@ claude mcp add revit-mcp -- "C:\Users\baoanh.nguyen\OneDrive - The Design Lab\Wo
    - *Ví dụ 2:* "Tạo một hệ lưới trục (grid) 5x5 khoảng cách 4000mm."
    - *Ví dụ 3:* "Thống kê số lượng tường và vật liệu trong dự án."
 
+### 2.1 Quy trình Dựng hình Thực tế (Dành cho Người dùng - Common User)
+
+Khi bạn muốn AI tự động dựng một công trình cụ thể (ví dụ: Nhà kho 45x48x10m), hãy làm theo các bước sau:
+
+#### Bước 1: Chuẩn bị trong Revit
+* Mở một dự án mới. Nên dùng Metric Template (như *Default Metric*) để đơn vị mặc định là **milimet (mm)**.
+* Đảm bảo các Family cơ bản đã được load sẵn (cột thép H/I, loại tường gạch/tôn, cửa cuốn, loại mái...).
+
+#### Bước 2: Gửi yêu cầu bằng ngôn ngữ tự nhiên
+* Copy toàn bộ đề bài/mô tả hoặc đính kèm ảnh vẽ của bạn vào ô chat với AI.
+* *Ví dụ:* `"Dựng cho tôi nhà kho kiểu 1: kích thước 45mx48mx10m, bước cột 8m, 3 gian 15m..."`
+
+#### Bước 3: Duyệt kế hoạch (Review Plan)
+* AI sẽ tự động phân tích đề bài và xuất ra một **Kế hoạch thực thi (Execution Plan)** dưới dạng danh sách việc cần làm (Tạo level -> Tạo Grid -> Dựng cột -> Vẽ tường...).
+* **Hành động của bạn:** 
+  * Gõ **`OK`** hoặc **`Tiến hành đi`** để đồng ý.
+  * Hoặc gõ yêu cầu điều chỉnh nếu AI hiểu sai ý: `"Chỉnh lại chiều cao tường gạch thành 1.5m nhé"`.
+
+#### Bước 4: Quan sát AI tự vẽ
+* AI sẽ tự động gọi các API của Revit để dựng mô hình từng bước một. Bạn có thể nhìn thấy các cấu kiện xuất hiện trực tiếp trên màn hình Revit của mình.
+
+#### Bước 5: Nghiệm thu và yêu cầu chỉnh sửa (Feedback to Fix)
+* Sau khi vẽ xong, AI sẽ chụp ảnh màn hình Revit gửi vào chat để bạn nghiệm thu trực quan.
+* Nếu phát hiện lỗi hoặc muốn đổi ý, bạn chỉ cần chat trực tiếp:
+  * `"Cột ở trục X2 bị lệch, chỉnh lại giúp tôi."`
+  * `"Đổi màu tôn mái sang màu xanh lá."`
+* AI sẽ tự tìm phần tử đó trong Revit để cập nhật/sửa lỗi và chụp ảnh báo cáo lại.
+
+---
+
+### 2.2 Cơ chế Tự sửa lỗi và Nâng cấp của AI (Auto-fix & Self-Improvement)
+
+Hệ thống MCP tích hợp cơ chế tự học để hạn chế phiền hà cho người dùng:
+
+* **Tự động sửa lỗi khi vẽ (Auto-fix):** Nếu một lệnh vẽ bị lỗi (lệch tọa độ, thiếu tham số...), AI sẽ tự đọc mã lỗi từ Revit, tự chẩn đoán nguyên nhân (qua hệ thống Harness Classify) và tự thay đổi thông số để vẽ lại mà không cần hỏi bạn.
+* **Tự đề xuất nâng cấp tính năng (Command Gap Propose):** Khi gặp cấu cấu phức tạp chưa có sẵn công cụ vẽ tự động (ví dụ: *Nóc gió*), AI sẽ tự động lập trình ra một đoạn code nâng cấp mới.
+  * **Hành động của bạn:** AI sẽ hỏi: *"Tôi phát hiện thiếu công cụ vẽ X và đã tự viết code để bổ sung, bạn có đồng ý cài đặt không?"*. Bạn chỉ cần gõ **`Yes`** để đồng ý, AI sẽ tự động cài đặt và cập nhật hệ thống để lần sau không bao giờ mắc lại lỗi thiếu tính năng này.
+
 ---
 
 ## 3. Cập nhật (Update)

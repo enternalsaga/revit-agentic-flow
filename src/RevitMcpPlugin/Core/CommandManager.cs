@@ -12,17 +12,26 @@ public class CommandManager
     private readonly object? _configurationManager;
     private readonly UIApplication _uiApplication;
     private readonly string _revitVersion;
+    private readonly Action<string>? _log;
 
-    public CommandManager(ICommandRegistry registry, object? configurationManager, UIApplication uiApplication, string revitVersion)
+    public CommandManager(
+        ICommandRegistry registry,
+        object? configurationManager,
+        UIApplication uiApplication,
+        string revitVersion,
+        Action<string>? log = null)
     {
         _registry = registry;
         _configurationManager = configurationManager;
         _uiApplication = uiApplication;
         _revitVersion = revitVersion;
+        _log = log;
     }
 
     public void LoadCommands()
     {
+        var loadedCount = 0;
+
         foreach (var config in GetCommandConfigs())
         {
             try
@@ -32,16 +41,25 @@ public class CommandManager
 
                 var commandName = GetString(config, "CommandName");
                 var assemblyPath = ResolveAssemblyPath(GetString(config, "AssemblyPath"));
-                if (string.IsNullOrWhiteSpace(commandName) || string.IsNullOrWhiteSpace(assemblyPath) || !File.Exists(assemblyPath))
+                if (string.IsNullOrWhiteSpace(commandName))
                     continue;
 
-                LoadCommandFromAssembly(commandName, assemblyPath);
+                if (string.IsNullOrWhiteSpace(assemblyPath) || !File.Exists(assemblyPath))
+                {
+                    Log($"Command '{commandName}' skipped: assembly not found at '{assemblyPath}'.");
+                    continue;
+                }
+
+                if (LoadCommandFromAssembly(commandName, assemblyPath))
+                    loadedCount++;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[CommandManager] Failed to load command: {ex.Message}");
+                Log($"Failed to load command: {ex.Message}");
             }
         }
+
+        Log($"Loaded {loadedCount} Revit MCP command(s).");
     }
 
     private IEnumerable<object> GetCommandConfigs()
@@ -61,20 +79,59 @@ public class CommandManager
         }
     }
 
-    private void LoadCommandFromAssembly(string commandName, string assemblyPath)
+    private bool LoadCommandFromAssembly(string commandName, string assemblyPath)
     {
-        var assembly = Assembly.LoadFrom(assemblyPath);
-        foreach (var type in GetLoadableTypes(assembly))
-        {
-            if (type == null || type.IsInterface || type.IsAbstract)
-                continue;
+        var assemblyDirectory = Path.GetDirectoryName(assemblyPath);
+        ResolveEventHandler? assemblyResolveHandler = assemblyDirectory == null
+            ? null
+            : CreateAssemblyResolveHandler(assemblyDirectory, _revitVersion);
 
-            var command = CreateCommand(type);
-            if (command != null && command.CommandName.Equals(commandName, StringComparison.OrdinalIgnoreCase))
+        if (assemblyResolveHandler != null)
+            AppDomain.CurrentDomain.AssemblyResolve += assemblyResolveHandler;
+
+        try
+        {
+            var assembly = Assembly.LoadFrom(assemblyPath);
+            var scannedTypes = 0;
+            var commandLikeSamples = new List<string>();
+
+            foreach (var type in GetLoadableTypes(assembly))
             {
-                _registry.RegisterCommand(command);
-                return;
+                if (type == null || type.IsInterface || type.IsAbstract)
+                    continue;
+
+                scannedTypes++;
+                CaptureCommandLikeSample(type, commandLikeSamples);
+
+                IRevitCommand? command;
+                try
+                {
+                    command = CreateCommand(type);
+                }
+                catch (Exception ex)
+                {
+                    Log($"Skipped type '{type.FullName}': {ex.Message}");
+                    continue;
+                }
+
+                if (command != null && command.CommandName.Equals(commandName, StringComparison.OrdinalIgnoreCase))
+                {
+                    _registry.RegisterCommand(command);
+                    Log($"Registered command '{commandName}'.");
+                    return true;
+                }
             }
+
+            var samples = commandLikeSamples.Count == 0
+                ? "none"
+                : string.Join("; ", commandLikeSamples.Take(3));
+            Log($"Command '{commandName}' not found in assembly '{assemblyPath}'. Scanned {scannedTypes} concrete type(s). Command-like samples: {samples}.");
+            return false;
+        }
+        finally
+        {
+            if (assemblyResolveHandler != null)
+                AppDomain.CurrentDomain.AssemblyResolve -= assemblyResolveHandler;
         }
     }
 
@@ -89,16 +146,16 @@ public class CommandManager
                 return command;
             }
 
-            var constructor = type.GetConstructor(new[] { typeof(UIApplication) });
+            var constructor = GetUIApplicationConstructor(type);
             return constructor != null
                 ? (IRevitCommand)constructor.Invoke(new object[] { _uiApplication })
                 : (IRevitCommand)Activator.CreateInstance(type)!;
         }
 
-        if (!ImplementsLegacyCommand(type))
+        if (!CommandReflectionUtils.LooksLikeLegacyCommand(type))
             return null;
 
-        var legacyConstructor = type.GetConstructor(new[] { typeof(UIApplication) });
+        var legacyConstructor = GetUIApplicationConstructor(type);
         var legacyCommand = legacyConstructor != null
             ? legacyConstructor.Invoke(new object[] { _uiApplication })
             : Activator.CreateInstance(type);
@@ -107,13 +164,10 @@ public class CommandManager
     }
 
     private string ResolveAssemblyPath(string assemblyPath)
-    {
-        if (Path.IsPathRooted(assemblyPath))
-            return assemblyPath;
-
-        var version = assemblyPath.Replace("{VERSION}", _revitVersion);
-        return Path.Combine(AppContext.BaseDirectory, "Commands", version);
-    }
+        => CommandAssemblyPathResolver.Resolve(
+            Configuration.PathManager.GetCommandsDirectoryPath(),
+            assemblyPath,
+            _revitVersion);
 
     private static string GetString(object source, string propertyName)
         => source.GetType().GetProperty(propertyName)?.GetValue(source)?.ToString() ?? "";
@@ -133,8 +187,84 @@ public class CommandManager
         }
     }
 
-    private static bool ImplementsLegacyCommand(Type type)
-        => type.GetInterfaces().Any(i => i.FullName == "RevitMCPSDK.API.Interfaces.IRevitCommand");
+    private static ResolveEventHandler CreateAssemblyResolveHandler(string commandAssemblyDirectory, string revitVersion)
+    {
+        var searchDirectories = new[]
+        {
+            commandAssemblyDirectory,
+            Configuration.PathManager.GetAppDataDirectoryPath(),
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Autodesk", $"Revit {revitVersion}")
+        };
+
+        return (_, args) =>
+        {
+            var requestedAssemblyName = new AssemblyName(args.Name);
+            var loadedAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(assembly => AssemblyName.ReferenceMatchesDefinition(
+                    assembly.GetName(),
+                    requestedAssemblyName));
+            if (loadedAssembly != null)
+                return loadedAssembly;
+
+            var fileName = requestedAssemblyName.Name + ".dll";
+            foreach (var directory in searchDirectories)
+            {
+                var candidate = Path.Combine(directory, fileName);
+                if (!File.Exists(candidate))
+                    continue;
+
+                try
+                {
+                    return Assembly.LoadFrom(candidate);
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+
+            return null;
+        };
+    }
+
+    private static ConstructorInfo? GetUIApplicationConstructor(Type type)
+        => type.GetConstructors()
+            .FirstOrDefault(ctor =>
+            {
+                var parameters = ctor.GetParameters();
+                return parameters.Length == 1
+                    && parameters[0].ParameterType.FullName == typeof(UIApplication).FullName;
+            });
+
+    private static void CaptureCommandLikeSample(Type type, List<string> samples)
+    {
+        if (samples.Count >= 3)
+            return;
+
+        try
+        {
+            var commandNameProperty = type.GetProperty("CommandName");
+            var executeMethod = CommandReflectionUtils.GetLegacyExecuteMethod(type);
+            if (commandNameProperty == null && executeMethod == null)
+                return;
+
+            var commandName = commandNameProperty == null ? "<no CommandName>" : "<CommandName>";
+            var execute = executeMethod == null
+                ? "<no Execute(JObject,string)>"
+                : string.Join(", ", executeMethod.GetParameters().Select(p => p.ParameterType.FullName));
+            samples.Add($"{type.FullName}: {commandName}, {execute}");
+        }
+        catch (Exception ex)
+        {
+            samples.Add($"{type.FullName}: inspection failed: {ex.Message}");
+        }
+    }
+
+    private void Log(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[CommandManager] {message}");
+        _log?.Invoke($"[CommandManager] {message}");
+    }
 
     private sealed class LegacyRevitCommandAdapter : IRevitCommand
     {
@@ -144,7 +274,7 @@ public class CommandManager
         public LegacyRevitCommandAdapter(object inner)
         {
             _inner = inner;
-            _executeMethod = inner.GetType().GetMethod("Execute", new[] { typeof(JObject), typeof(string) })
+            _executeMethod = CommandReflectionUtils.GetLegacyExecuteMethod(inner.GetType())
                 ?? throw new InvalidOperationException($"Legacy command '{inner.GetType().FullName}' does not expose Execute(JObject, string).");
         }
 
@@ -152,6 +282,9 @@ public class CommandManager
             => _inner.GetType().GetProperty("CommandName")?.GetValue(_inner)?.ToString() ?? "";
 
         public object Execute(JObject parameters, string requestId)
-            => _executeMethod.Invoke(_inner, new object[] { parameters, requestId })!;
+        {
+            var convertedParameters = CommandReflectionUtils.ConvertParametersForLegacyExecute(parameters, _executeMethod);
+            return _executeMethod.Invoke(_inner, new[] { convertedParameters, requestId })!;
+        }
     }
 }

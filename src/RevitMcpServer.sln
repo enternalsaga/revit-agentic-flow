@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitMCPCommandSet", "Revit
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitMCPCommandSet.Tests", "..\tests\RevitMcpCommandSet.Tests\RevitMCPCommandSet.Tests.csproj", "{A79E32CB-FE4F-43E5-9ECD-89CAF68B7A0A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RevitMcpPlugin.Tests", "..\tests\RevitMcpPlugin.Tests\RevitMcpPlugin.Tests.csproj", "{FB915E33-A5C2-4C40-B750-693E374067D3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,5 +44,9 @@ Global
 		{A79E32CB-FE4F-43E5-9ECD-89CAF68B7A0A}.Debug|Any CPU.Build.0 = Debug.R25|Any CPU
 		{A79E32CB-FE4F-43E5-9ECD-89CAF68B7A0A}.Release|Any CPU.ActiveCfg = Release.R25|Any CPU
 		{A79E32CB-FE4F-43E5-9ECD-89CAF68B7A0A}.Release|Any CPU.Build.0 = Release.R25|Any CPU
+		{FB915E33-A5C2-4C40-B750-693E374067D3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB915E33-A5C2-4C40-B750-693E374067D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB915E33-A5C2-4C40-B750-693E374067D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB915E33-A5C2-4C40-B750-693E374067D3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

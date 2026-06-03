@@ -18,7 +18,7 @@ public class ToggleCommand : IExternalCommand
         }
         else if (App.Service.IsRunning)
         {
-            App.Service.Stop();
+            App.StopService();
             TaskDialog.Show("Revit MCP", "Server stopped.");
         }
         else

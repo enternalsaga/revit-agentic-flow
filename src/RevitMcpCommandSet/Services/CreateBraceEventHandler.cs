@@ -3,7 +3,7 @@ using Autodesk.Revit.UI;
 using RevitMCPCommandSet.Models.Architecture;
 using RevitMCPCommandSet.Models.Common;
 using RevitMCPCommandSet.Utils;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {
@@ -47,7 +47,7 @@ namespace RevitMCPCommandSet.Services
 
                             if (braceData.TypeId > 0)
                             {
-                                ElementId typeEleId = new ElementId(braceData.TypeId);
+                                ElementId typeEleId = RevitIdUtils.ToElementId(braceData.TypeId);
                                 Element typeEle = doc.GetElement(typeEleId);
                                 if (typeEle is FamilySymbol fs)
                                 {

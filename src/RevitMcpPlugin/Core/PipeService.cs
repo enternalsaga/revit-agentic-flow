@@ -12,12 +12,14 @@ public class PipeService
     private const int MaxMessageLength = 50_000_000;
 
     private readonly CommandExecutor _executor;
+    private readonly Action<string>? _log;
     private volatile bool _running;
     private Thread? _listenerThread;
 
-    public PipeService(ICommandRegistry registry, CommandExecutor executor)
+    public PipeService(ICommandRegistry registry, CommandExecutor executor, Action<string>? log = null)
     {
         _executor = executor;
+        _log = log;
     }
 
     public bool IsRunning => _running;
@@ -34,10 +36,14 @@ public class PipeService
             Name = "MCP-PipeListener"
         };
         _listenerThread.Start();
+        Log($"Pipe service started on '{PipeName}'.");
     }
 
     public void Stop()
     {
+        if (!_running)
+            return;
+
         _running = false;
         try
         {
@@ -48,6 +54,8 @@ public class PipeService
         {
             // Best-effort wakeup if listener is blocked in WaitForConnection.
         }
+
+        Log("Pipe service stopped.");
     }
 
     private void ListenLoop()
@@ -67,7 +75,10 @@ public class PipeService
 
                 pipe.WaitForConnection();
                 if (_running)
+                {
+                    Log("Client connected.");
                     HandleClient(pipe);
+                }
             }
             catch (Exception) when (!_running)
             {
@@ -75,7 +86,7 @@ public class PipeService
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[PipeService] Error: {ex.Message}");
+                Log($"Error: {ex.Message}");
                 Thread.Sleep(200);
             }
         }
@@ -93,6 +104,8 @@ public class PipeService
             var responseJson = request == null
                 ? CreateErrorResponse("", -32600, "Invalid JSON-RPC request.")
                 : _executor.Execute(request);
+            if (request != null)
+                Log($"Handled request '{request.Method}'.");
 
             WriteLengthPrefixed(pipe, responseJson);
         }
@@ -106,6 +119,8 @@ public class PipeService
             {
                 // Pipe may already be broken.
             }
+
+            Log($"Client handling error: {ex.Message}");
         }
     }
 
@@ -163,5 +178,11 @@ public class PipeService
             Id = id,
             Error = new JsonRpcError { Code = code, Message = message }
         });
+    }
+
+    private void Log(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[PipeService] {message}");
+        _log?.Invoke($"[PipeService] {message}");
     }
 }

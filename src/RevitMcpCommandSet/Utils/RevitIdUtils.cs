@@ -14,5 +14,28 @@ namespace RevitMCPCommandSet.Utils
             return id.IntegerValue;
 #endif
         }
+
+        public static int ToInt(ElementId id)
+        {
+            return (int)ToLong(id);
+        }
+
+        public static ElementId ToElementId(long id)
+        {
+#if REVIT2024_OR_GREATER
+            return new ElementId(id);
+#else
+            return new ElementId((int)id);
+#endif
+        }
+
+        public static ElementId ToElementId(int id)
+        {
+#if REVIT2024_OR_GREATER
+            return new ElementId((long)id);
+#else
+            return new ElementId(id);
+#endif
+        }
     }
 }

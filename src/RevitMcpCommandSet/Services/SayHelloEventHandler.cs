@@ -1,5 +1,5 @@
 using Autodesk.Revit.UI;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {

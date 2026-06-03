@@ -1,7 +1,7 @@
-﻿using Autodesk.Revit.UI;
+using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
 using RevitMCPCommandSet.Services;
-using RevitMCPSDK.API.Base;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Commands
 {
@@ -10,12 +10,12 @@ namespace RevitMCPCommandSet.Commands
         private TagWallsEventHandler _handler => (TagWallsEventHandler)Handler;
 
         /// <summary>
-        /// 命令名称
+        /// ????
         /// </summary>
         public override string CommandName => "tag_walls";
 
         /// <summary>
-        /// 构造函数
+        /// ????
         /// </summary>
         /// <param name="uiApp">Revit UIApplication</param>
         public TagWallsCommand(UIApplication uiApp)
@@ -27,7 +27,7 @@ namespace RevitMCPCommandSet.Commands
         {
             try
             {
-                // 解析参数
+                // ????
                 bool useLeader = false;
                 if (parameters["useLeader"] != null)
                 {
@@ -40,22 +40,22 @@ namespace RevitMCPCommandSet.Commands
                     tagTypeId = parameters["tagTypeId"].ToString();
                 }
 
-                // 设置标记参数
+                // ??????
                 _handler.SetParameters(useLeader, tagTypeId);
 
-                // 触发外部事件并等待完成
+                // ???????????
                 if (RaiseAndWaitForCompletion(10000))
                 {
                     return _handler.TaggingResults;
                 }
                 else
                 {
-                    throw new TimeoutException("标记墙操作超时");
+                    throw new TimeoutException("???????");
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception($"标记墙失败: {ex.Message}");
+                throw new Exception($"?????: {ex.Message}");
             }
         }
     }

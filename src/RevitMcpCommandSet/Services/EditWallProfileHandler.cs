@@ -1,7 +1,8 @@
 using Autodesk.Revit.UI;
 using Autodesk.Revit.DB;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 using RevitMCPCommandSet.Models.Common;
+using RevitMCPCommandSet.Utils;
 using System;
 using System.Linq;
 using System.Threading;
@@ -34,7 +35,7 @@ namespace RevitMCPCommandSet.Services
                 if (_wallId <= 0)
                     throw new Exception("Missing or invalid wallId");
 
-                Wall wall = doc.GetElement(new ElementId(_wallId)) as Wall;
+                Wall wall = doc.GetElement(RevitIdUtils.ToElementId(_wallId)) as Wall;
                 if (wall == null)
                     throw new Exception("Wall not found");
 

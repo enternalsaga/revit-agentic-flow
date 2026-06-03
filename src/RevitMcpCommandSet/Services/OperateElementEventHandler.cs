@@ -1,7 +1,8 @@
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
-using RevitMCPSDK.API.Interfaces;
+using RevitMcpSdk;
 using RevitMCPCommandSet.Models.Common;
+using RevitMCPCommandSet.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -101,7 +102,7 @@ namespace RevitMCPCommandSet.Services
             Document doc = uidoc.Document;
 
             // 将int类型的元素ID转换为ElementId类型
-            ICollection<ElementId> elementIds = setting.ElementIds.Select(id => new ElementId(id)).ToList();
+            ICollection<ElementId> elementIds = setting.ElementIds.Select(RevitIdUtils.ToElementId).ToList();
 
             // 解析操作类型
             ElementOperationType action;

@@ -1,5 +1,6 @@
 using Autodesk.Revit.UI;
-using RevitMCPSDK.API.Interfaces;
+using RevitMCPCommandSet.Utils;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Services
 {
@@ -225,7 +226,7 @@ try
             {
                 if (int.TryParse(_tagTypeId, out int id))
                 {
-                    ElementId elementId = new ElementId(id);
+                    ElementId elementId = RevitIdUtils.ToElementId(id);
                     Element element = doc.GetElement(elementId);
 
                     if (element != null && element is FamilySymbol symbol &&
