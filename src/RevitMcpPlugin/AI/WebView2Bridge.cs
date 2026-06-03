@@ -10,7 +10,7 @@ namespace RevitMcpPlugin.AI;
 public class WebView2Bridge : IDisposable
 {
     private readonly WebView2 _webView;
-    private readonly ConcurrentDictionary<string, Action<string>> _handlers = new();
+    private readonly ConcurrentDictionary<string, Action<string?>> _handlers = new();
     public event EventHandler<BridgeMessage>? MessageReceived;
 
     public WebView2Bridge(WebView2 webView)
@@ -59,7 +59,7 @@ public class WebView2Bridge : IDisposable
         }
     }
 
-    public void On(string type, Action<string> handler) => _handlers[type] = handler;
+    public void On(string type, Action<string?> handler) => _handlers[type] = handler;
 
     private void OnWebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {

@@ -24,9 +24,9 @@ public class LlmOrchestrationService
     public string ProviderName => _provider.ProviderName;
     public string ModelId => _provider.ModelId;
 
-    public event Action<string> OnStreamingDelta;
-    public event Action<string> OnStatusUpdate;
-    public event Action<TokenUsageInfo> OnTokenUsage;
+    public event Action<string>? OnStreamingDelta;
+    public event Action<string?>? OnStatusUpdate;
+    public event Action<TokenUsageInfo>? OnTokenUsage;
 
     public LlmOrchestrationService(ILlmProvider provider)
     {
@@ -178,7 +178,7 @@ public class LlmOrchestrationService
                     ElapsedMs = 0
                 });
 
-                string stopReason = response["stop_reason"]?.ToString();
+                string? stopReason = response["stop_reason"]?.ToString();
                 var content = response["content"] as JArray ?? new JArray();
 
                 // BIBIM-007: defensive tool_use coercion.
@@ -242,8 +242,8 @@ public class LlmOrchestrationService
                     {
                         if (block["type"]?.ToString() != "tool_use") continue;
 
-                        string toolId = block["id"]?.ToString();
-                        string toolName = block["name"]?.ToString();
+                        string? toolId = block["id"]?.ToString();
+                        string? toolName = block["name"]?.ToString();
                         string toolInput = block["input"]?.ToString(Newtonsoft.Json.Formatting.None) ?? "{}";
 
                         if (string.IsNullOrEmpty(toolId) || string.IsNullOrEmpty(toolName))

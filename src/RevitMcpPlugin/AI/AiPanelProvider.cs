@@ -18,19 +18,19 @@ namespace RevitMcpPlugin.AI;
 
 public class AiPanelProvider : IDockablePaneProvider, IDisposable
 {
-    private WebView2 _webView;
-    private Grid _hostGrid;
-    private WebView2Bridge _bridge;
+    private WebView2? _webView;
+    private Grid? _hostGrid;
+    private WebView2Bridge? _bridge;
     private bool _initialized;
-    private LlmOrchestrationService _llmService;
+    private LlmOrchestrationService? _llmService;
     private readonly List<(string role, string text)> _chatHistory = new();
     private readonly object _chatHistoryLock = new();
-    private CancellationTokenSource _streamingCts;
-    private AiConfig _config;
+    private CancellationTokenSource? _streamingCts;
+    private AiConfig _config = AiConfigService.CreateDefault();
     private readonly AiConfigService _configService = new();
 
-    public FrameworkElement HostElement => _hostGrid;
-    public WebView2Bridge Bridge => _bridge;
+    public FrameworkElement HostElement => _hostGrid ?? throw new InvalidOperationException("AI pane is not initialized.");
+    public WebView2Bridge Bridge => _bridge ?? throw new InvalidOperationException("AI bridge is not initialized.");
 
     public static readonly DockablePaneId PanelId =
         new DockablePaneId(new Guid("A1A2A3A4-B5C6-D7E8-F9A0-B1C2D3E4F5A6"));
@@ -60,6 +60,7 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
     private async Task InitializeWebViewAsync()
     {
         if (_initialized) return;
+        if (_webView == null) return;
         try
         {
             string userDataFolder = Path.Combine(
@@ -102,11 +103,13 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
 
     private void RegisterBridgeHandlers()
     {
-        _bridge.On("send_message", async (payload) =>
+        var bridge = _bridge ?? throw new InvalidOperationException("AI bridge is not initialized.");
+
+        bridge.On("send_message", async (payload) =>
         {
             try
             {
-                var payloadObj = JObject.Parse(payload);
+                var payloadObj = JObject.Parse(payload ?? "{}");
                 string text = payloadObj["text"]?.ToString() ?? "";
 
                 if (string.IsNullOrWhiteSpace(text)) return;
@@ -138,8 +141,8 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
 
                 var messages = LlmOrchestrationService.BuildMessagesArray(_chatHistory);
                 string commandJsonPath = FindCommandJsonPath();
-                JArray toolDefinitions = null;
-                Func<string, string, CancellationToken, Task<string>> toolExecutor = null;
+                JArray? toolDefinitions = null;
+                Func<string, string, CancellationToken, Task<string>>? toolExecutor = null;
 
                 if (!string.IsNullOrEmpty(commandJsonPath) && File.Exists(commandJsonPath))
                 {
@@ -150,7 +153,7 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
                 var executor = GetCommandExecutor();
                 if (toolDefinitions != null && toolDefinitions.Count > 0 && executor != null)
                 {
-                    toolExecutor = async (toolName, toolInput, ct) =>
+                    toolExecutor = (toolName, toolInput, ct) =>
                     {
                         var request = new JObject
                         {
@@ -159,12 +162,12 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
                             ["params"] = JObject.Parse(toolInput),
                             ["id"] = "1"
                         };
-                        return executor.ExecuteJson(request.ToString(Formatting.None));
+                        return Task.FromResult(executor.ExecuteJson(request.ToString(Formatting.None)));
                     };
                 }
 
                 LlmResponse response;
-                if (toolExecutor != null)
+                if (toolExecutor != null && toolDefinitions != null)
                 {
                     response = await _llmService.GenerateWithToolsAsync(
                         messages, SystemPrompt, toolDefinitions,
@@ -209,7 +212,7 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
             }
         });
 
-        _bridge.On("load_settings", (payload) =>
+        bridge.On("load_settings", (payload) =>
         {
             try
             {
@@ -222,11 +225,11 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
             }
         });
 
-        _bridge.On("save_settings", (payload) =>
+        bridge.On("save_settings", (payload) =>
         {
             try
             {
-                _config = JsonConvert.DeserializeObject<AiConfig>(payload) ?? AiConfigService.CreateDefault();
+                _config = JsonConvert.DeserializeObject<AiConfig>(payload ?? "{}") ?? AiConfigService.CreateDefault();
                 _configService.Save(_config);
                 _llmService = null;
                 Post("settings_saved", true);
@@ -238,7 +241,7 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
             }
         });
 
-        _bridge.On("clear_history", (payload) =>
+        bridge.On("clear_history", (payload) =>
         {
             lock (_chatHistoryLock) _chatHistory.Clear();
             TokenTracker.ResetSession();
@@ -252,14 +255,14 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
     }
 
     private void OnStreamingDelta(string delta) => Post("streaming_delta", new { delta });
-    private void OnStatusUpdate(string status) => Post("status_update", status);
+    private void OnStatusUpdate(string? status) => Post("status_update", status);
 
-    private CommandExecutor GetCommandExecutor()
+    private CommandExecutor? GetCommandExecutor()
     {
         return App.Service?.Executor;
     }
 
-    private void Post(string type, object payload = null)
+    private void Post(string type, object? payload = null)
     {
         try { _bridge?.PostMessage(type, payload); }
         catch { /* bridge not ready */ }
