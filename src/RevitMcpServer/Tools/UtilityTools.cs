@@ -73,6 +73,7 @@ public static class UtilityTools
                 "get_levels_detail", "get_grids", "get_categories", "get_warnings", "get_schedules",
                 "get_schedule_data", "analyze_model_statistics", "get_material_quantities", "create_grid",
                 "create_custom_grid", "create_level", "create_room", "create_line_based_element",
+                "create_stacked_wall", "create_or_update_basic_wall_type", "inspect_stacked_wall_type",
                 "create_point_based_element", "create_surface_based_element", "create_parametric_door",
                 "create_structural_column", "create_structural_framing_system", "create_brace",
                 "create_sloped_roof", "create_curtain_wall", "create_dimensions", "create_model_snapshot",
@@ -92,7 +93,7 @@ public static class UtilityTools
                 description = c["description"]?.ToString()
             }),
             revitCommandCount = commands.Count,
-            guidance = "Use dedicated MCP tools instead of send_code_to_revit when a dedicated tool exists."
+            guidance = "Create editable native Revit elements by default. Use dedicated MCP tools first; use send_code_to_revit only as a native Revit API helper when a wrapper is missing. DirectShape must be an explicit, reported placeholder fallback."
         };
 
         return JsonConvert.SerializeObject(result, Formatting.Indented);

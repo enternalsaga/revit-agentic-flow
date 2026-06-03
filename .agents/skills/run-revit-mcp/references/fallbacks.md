@@ -2,12 +2,16 @@
 
 Use this reference only when direct MCP tools are unavailable, stale, or fail with evidence.
 
+## Native-First Fallback Policy
+
+Fallbacks must preserve editability. See `tool-reference.md` § "Native-First Output Contract" for the full priority chain. In fallback context: prefer compiled/inline helper code that creates native Revit elements over DirectShape. Use DirectShape only after the native-helper path is proven impossible or the user explicitly accepts a non-editable placeholder.
+
 ## Runtime Discovery Order
 
 1. Run `.\harness check`.
 2. Prefer direct MCP tools exposed to the agent.
 3. If direct MCP discovery is stale but Revit runtime has the command, call it through `.\harness invoke <command>`.
-4. Use compiled helper DLL flow only for large C# payloads or custom geometry.
+4. Use compiled helper DLL flow for large C# payloads, especially native Revit API operations not covered by command wrappers.
 5. Use inline `send_code_to_revit` only when the command wrapper and compiled helper flow are inappropriate.
 
 ## JSON-RPC Invocation

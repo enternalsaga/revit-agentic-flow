@@ -304,6 +304,21 @@
       "assemblyPath": "RevitMCPCommandSet.dll"
     },
     {
+      "commandName": "create_stacked_wall",
+      "description": "Create native stacked walls for vertical facade assemblies such as brick, louver, and metal cladding bands",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "create_or_update_basic_wall_type",
+      "description": "Create or update native Basic Wall types with editable compound layers, thicknesses, material functions, and materials",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "inspect_stacked_wall_type",
+      "description": "Inspect a native Stacked Wall type by creating a temporary rolled-back sample wall and reporting its member Basic Wall types",
+      "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
       "commandName": "create_brace",
       "description": "Create structural braces (diagonal members for lateral stability)",
       "assemblyPath": "RevitMCPCommandSet.dll"

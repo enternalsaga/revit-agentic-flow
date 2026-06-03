@@ -4,21 +4,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-MCP (Model Context Protocol) server for Autodesk Revit. It enables AI assistants to read, create, modify, and delete elements in Revit projects.
+MCP (Model Context Protocol) server for Autodesk Revit with a self-improvement harness. Enables AI assistants to read, create, modify, and delete elements in Revit projects, and to diagnose, test, and improve the MCP tooling itself.
 
 ## Architecture
 
 Primary execution chain:
 
 ```text
-AI Client <--stdio--> RevitMcpServer (C# MCP) <--named pipe: revit-mcp--> RevitMcpPlugin (C# add-in) --> Command Set (C#) --> Revit API
+AI Client <--stdio--> RevitMcpServer (C# MCP) <--named pipe: revit-mcp--> RevitMcpPlugin (C# add-in) --> CommandSet (C#) --> Revit API
 ```
 
-- **`src/RevitMcpServer/`** - .NET 8 stdio MCP server. Tool wrappers live in `Tools/` and forward JSON-RPC requests through `Pipes/PipeClient`.
-- **`src/RevitMcpSdk/`** - shared SDK contracts and JSON-RPC models used by the server and plugin.
-- **`src/RevitMcpPlugin/`** - Revit add-in for 2024 (`net48`) and 2025 (`net8.0-windows`). It starts a named pipe service, dispatches requests through `CommandExecutor`, and loads command assemblies via `CommandManager`.
-- **`src/RevitMcpCommandSet/`** - Revit command implementations. The plugin loads this assembly via `CommandManager`.
-- **`src/RevitMcpCommandSet/command.json`** - command manifest used by the plugin configuration sync.
+Self-improvement harness:
+
+```text
+harness.bat --> src/RevitHarness/*.ps1 --> bootstrap, registry, invoke, classify, trace, evals, gap resolver
+```
+
+- **`src/RevitMcpServer/`** — .NET 8 stdio MCP server. Tool wrappers live in `Tools/` and forward JSON-RPC requests through `Pipes/PipeClient`.
+- **`src/RevitMcpSdk/`** — shared SDK contracts and JSON-RPC models used by the server and plugin.
+- **`src/RevitMcpPlugin/`** — Revit add-in for 2024 (`net48`) and 2025 (`net8.0-windows`). Starts a named pipe service, dispatches requests through `CommandExecutor`, loads command assemblies via `CommandManager`.
+- **`src/RevitMcpCommandSet/`** — Revit command implementations and `command.json` manifest. The plugin loads this assembly via `CommandManager`.
+- **`src/RevitHarness/`** — PowerShell harness for runtime diagnostics, failure classification, trace capture, evals, and command gap resolution.
+- **`tests/RevitMcpCommandSet.Tests/`** — commandset integration tests.
 
 Named pipe protocol:
 - Pipe name: `revit-mcp`
@@ -77,7 +84,7 @@ C# solution build:
 dotnet build src/RevitMcpServer.sln -c Release
 ```
 
-Live Revit integration testing requires Revit 2024 or 2025 open with the Phase 1 plugin loaded:
+Live Revit integration testing requires Revit 2024 or 2025 open with the plugin loaded:
 
 ```powershell
 npx @anthropic-ai/mcp-inspector src\RevitMcpServer\bin\Release\net8.0-windows\win-x64\publish\RevitMcpServer.exe
@@ -85,12 +92,44 @@ npx @anthropic-ai/mcp-inspector src\RevitMcpServer\bin\Release\net8.0-windows\wi
 
 Use `say_hello` and `get_current_view_info` as smoke tests.
 
-Existing commandset integration tests require Revit open:
+Commandset tests require Revit open:
 
 ```powershell
 dotnet test .\tests\RevitMcpCommandSet.Tests\RevitMCPCommandSet.Tests.csproj -c Debug.R24 -r win-x64
 dotnet test .\tests\RevitMcpCommandSet.Tests\RevitMCPCommandSet.Tests.csproj -c Debug.R25 -r win-x64
 ```
+
+Harness technical evals (no Revit needed):
+
+```powershell
+.\harness evals
+```
+
+Harness live evals (Revit required):
+
+```powershell
+.\harness evals --live
+```
+
+## Self-Improvement Harness
+
+The harness at `src/RevitHarness/` provides runtime diagnostics and improvement tooling. Use `.\harness <command>` from project root:
+
+| Command | Purpose |
+|---------|---------|
+| `.\harness check` | Bootstrap: transport status, command counts, drift |
+| `.\harness registry` | Full command coverage audit across all layers |
+| `.\harness invoke <name>` | Safe Revit command invocation (avoids quoting issues) |
+| `.\harness classify <file>` | Classify a command error into taxonomy categories |
+| `.\harness trace new <label>` | Start a new trace for a task |
+| `.\harness evals` | Run offline technical evals |
+| `.\harness evals --live` | Run all evals including live Revit tests |
+| `.\harness gap detect <trace>` | Detect missing commands from trace evidence |
+| `.\harness gap propose <gap>` | Generate command proposal (requires human approval) |
+
+- WHEN starting a Revit modeling task → DO run `.\harness check` first.
+- WHEN a command fails → DO classify with `.\harness classify` and save a trace.
+- NEVER scaffold or apply command proposals without explicit user approval.
 
 ## Adding a New MCP Tool
 
@@ -121,6 +160,7 @@ Minimum modeling checks:
 - The MCP server communicates with the Revit add-in via named pipe `revit-mcp`.
 - Revit add-ins must be installed under `%APPDATA%\Autodesk\Revit\Addins\<version>\`.
 - `RevitMcpServer` publish is intentionally untrimmed because MCP tool discovery and plugin command loading use reflection.
+- Harness runtime output (`.revit-harness/runs/`, `cache/`, `lesson-candidates/`, `command-gaps/`, `command-proposals/`, `command-scaffolds/`) is gitignored.
 
 ## C# Coding Pitfalls
 
@@ -133,4 +173,6 @@ Minimum modeling checks:
 
 - Restart the MCP client after adding or renaming MCP tools.
 - Restart Revit after replacing add-in DLLs.
-- If the server returns `Method not found`, confirm `RevitMcpCommandSet.dll` and `command.json` exist below the deployed plugin directory for the target Revit version.
+- If the server returns `Method not found`, run `.\harness check` to diagnose transport and registry state.
+- WHEN JSON-RPC calls fail with quoting errors → DO use `.\harness invoke` with `--params-file` instead of inline JSON.
+- WHEN a command exists in source but not at runtime → DO run `.\harness registry` to identify which layer is missing.

@@ -13,12 +13,15 @@ The workflow has 4 phases: **Diagnose → Plan → Execute → Verify & Report**
 
 ## CRITICAL: Tool Usage Policy
 
-**`send_code_to_revit` is the LAST RESORT, not the default.** A past failure mode is the AI assuming dedicated tools don't exist and falling back to `send_code_to_revit` for everything. This defeats the purpose of the MCP server.
+**Native Revit elements are the default output.** See `references/tool-reference.md` § "Native-First Output Contract" for the full priority chain. `DirectShape` is only allowed for an explicitly approved placeholder, temporary visualization, or geometry that Revit cannot represent with native elements after the native options have been tried and documented.
+
+**`send_code_to_revit` is the LAST RESORT, not the default.** A past failure mode is the AI assuming dedicated tools don't exist and falling back to `send_code_to_revit` for everything. This defeats the purpose of the MCP server. When `send_code_to_revit` is necessary, use it to create or modify native Revit elements before considering `DirectShape`.
 
 Before using `send_code_to_revit` for ANY operation, you MUST:
 1. Load `.agents/skills/run-revit-mcp/references/tool-reference.md` and map the task to a dedicated tool first
 2. If you think a tool doesn't exist, **call it anyway** — tool availability is determined by the MCP server at runtime, not by your assumptions
-3. Only use `send_code_to_revit` after a dedicated tool genuinely does not exist or has failed with an error that proves it cannot handle the specific operation
+3. Classify each requested element as `native`, `native-with-helper`, or `DirectShape-placeholder`; final model output must be `native` or `native-with-helper` unless the user accepts the editability tradeoff
+4. Only use `send_code_to_revit` after a dedicated tool genuinely does not exist or has failed with an error that proves it cannot handle the specific operation
 
 If your execution plan has more than 1 `send_code_to_revit` call, stop and re-examine — you are almost certainly missing available tools.
 
@@ -26,6 +29,7 @@ If your execution plan has more than 1 `send_code_to_revit` call, stop and re-ex
 - Dedicated tools validate parameters and return structured errors
 - `send_code_to_revit` requires correct C# syntax, manual unit conversion (mm→ft), manual transaction handling, and produces opaque errors
 - The AI frequently writes buggy C# (compilation errors, wrong API calls) when tools would work on the first try
+- DirectShape creates mostly static geometry; users cannot edit it like normal Revit walls, roofs, doors, framing, or family instances
 
 ---
 
@@ -35,7 +39,7 @@ Read the user's request carefully and break it into atomic modeling tasks.
 
 1. **List every element** the user wants created. Be specific — include dimensions, positions, types, and relationships. If the user provided an image or drawing, extract all measurable details (grid spacing, level heights, member sizes, slope angles, door/window sizes).
 
-2. **Identify missing information.** If critical dimensions, family types, or positions are ambiguous, ask the user before proceeding. Do not guess structural member sizes or door/window dimensions.
+2. **Identify missing information.** If critical dimensions, family types, or positions are ambiguous, ask the user before proceeding. Do not guess structural member sizes or door/window dimensions. Query available family/types before creating placeholders; missing families are a reason to load/create a native family/type, not a reason to default to DirectShape.
 
 3. **Determine creation order.** Revit elements have dependencies:
    - Grids and Levels come first (they define the coordinate system)
@@ -65,6 +69,8 @@ Use the bootstrap report as runtime truth:
 - If no transport is available, stop and report that Revit/plugin is not connected.
 - If a command fails, save or update a trace, classify the failure through `.\harness classify <error-file>`, and append trace data through `.\harness trace`.
 
+**If `harness` CLI is not installed or not found:** Skip the bootstrap step and proceed directly to Step 1 (tool discovery via `list_available_commands`). The harness improves diagnostics but is not required for the core workflow. Log: `"(Harness: unavailable — skipping bootstrap, using direct MCP discovery)"`.
+
 ### Reference Loading
 
 Load references only when needed:
@@ -73,6 +79,7 @@ Load references only when needed:
 - `.agents/skills/run-revit-mcp/references/fallbacks.md` when a dedicated tool is unavailable or fails.
 - `.agents/skills/run-revit-mcp/references/failure-taxonomy.md` when classifying an error.
 - `.agents/skills/run-revit-mcp/references/verification-checklist.md` before final reporting.
+- `.agents/skills/run-revit-mcp/references/subagent-delegation.md` when delegating sidecar work to subagents.
 
 ### MANDATORY: Load tool schemas first
 
@@ -125,7 +132,7 @@ Use `.agents/skills/run-revit-mcp/references/tool-reference.md` when mapping tas
 
 1. **Stale session = missing tools (LL-010).** The MCP server starts once per Claude Code session. If tools were added/rebuilt after session start, `ToolSearch` won't find them. **Always try the JSON-RPC bridge first** before concluding a tool doesn't exist. If many tools are missing, recommend the user restart Claude Code.
 
-2. **`create_surface_based_element` with `OST_Roofs` creates FLAT roofs.** Revit footprint roofs ignore Z coordinates in boundary loops. Use `create_sloped_roof` (preferred) or DirectShape geometry: define the sloped cross-section as a CurveLoop in XZ plane, then extrude along Y. Calculate thickness offset perpendicular to the slope surface.
+2. **`create_surface_based_element` with `OST_Roofs` creates FLAT roofs.** Revit footprint roofs ignore Z coordinates in boundary loops. Use `create_sloped_roof` first. If it cannot model the roof, use native roof API/edit profiles or a compiled native-helper command. Only use DirectShape for a roof after documenting why native roofs cannot meet the requirement and confirming the user accepts non-native editability.
 
 3. **Cannot switch active view inside `send_code_to_revit`.** The code runs within a transaction; `RequestViewChange` and setting `ActiveView` fail. Use the dedicated `switch_view` tool instead — it runs outside a transaction. For exporting images without switching views, use `ImageExportOptions.SetViewsAndSheets()` inside `send_code_to_revit`.
 
@@ -137,12 +144,14 @@ Only for operations that genuinely have no tool equivalent, such as:
 - Joining/unjoing geometry between elements
 - Complex family manipulation (duplicating types, setting type parameters)
 - Attaching walls to roofs (Attach Top/Base)
-- Creating custom geometry (extrusions, sweeps)
+- Creating or modifying native Revit elements where the MCP command wrapper is missing
 - Operations combining multiple Revit API calls in a single transaction
 
 When you must use it, document the reason: `"(Tool: send_code_to_revit — Reason: no MCP tool for joining wall geometry)"`
 
-### Large custom geometry through `send_code_to_revit`
+If the code creates DirectShape, document it separately as an approved placeholder: `"(DirectShape placeholder — Reason: native roof/family path failed because ...; Editability: static geometry, not editable as native BIM element)"`
+
+### Large native helper operations through `send_code_to_revit`
 
 For compiled helper DLL flow and JSON-RPC invocation patterns, use `references/fallbacks.md`. The reference covers the helper script with `-SourcePath`, `-TypeName`, and `-MethodName` parameters, and how to avoid nested transactions.
 
@@ -172,49 +181,11 @@ Wait for user confirmation before executing. If the user says to proceed or the 
 
 Execute each task using the mapped MCP tools.
 
-### Subagent Delegation (optional but recommended for large models)
+### Subagent Delegation (use only for large, independent work)
 
-For models with 10+ tasks, delegate lightweight work to subagents while the main agent drives Revit tool calls sequentially. This exploits the fact that **Revit MCP serializes all tool calls** (mutex), so only one agent can talk to Revit at a time — but preparation and verification work can run in parallel.
+For models with 10+ planned tasks, use subagents for sidecar work (coordinate calculation, C# drafting, snapshot analysis). The main agent remains the coordinator for all Revit MCP calls.
 
-**What CAN be delegated to subagents (model: haiku for speed):**
-- **Coordinate calculation**: Given grid positions and element rules, compute all XYZ coordinates for columns, walls, doors. Return as JSON arrays ready for tool calls.
-- **C# code generation**: Write `send_code_to_revit` snippets for DirectShape geometry (roofs, ridge vents, custom shapes). The main agent reviews and executes.
-- **Snapshot analysis**: After main agent exports an image, a subagent reads and checks for visual issues (misalignment, missing elements, intersections).
-- **Element count verification**: Compare `analyze_model_statistics` output against the plan checklist.
-- **Documentation**: Write the final report while the main agent finishes the last tool calls.
-
-**What MUST stay on the main agent:**
-- All Revit MCP tool calls (serialized by mutex — parallel calls just queue)
-- Decisions that depend on previous tool call results (element IDs, error handling)
-- Family type discovery (`get_available_family_types`) — results inform subsequent calls
-
-**How to delegate:**
-
-```
-# Example: delegate coordinate prep to a haiku subagent
-Agent({
-  description: "Calculate column coordinates",
-  model: "haiku",
-  prompt: "Given grid positions X=[0,15000,40000] and Y=[0,6000,...,60000], 
-           plus end-frame intermediates at Y=0,60000 with X=[7500,20000,25000,30000,35000],
-           generate a JSON array of {name, x, y} for all 43 columns. 
-           Return ONLY the JSON array, no explanation."
-})
-
-# Example: delegate DirectShape code to a sonnet subagent  
-Agent({
-  description: "Generate sloped roof C# code",
-  model: "sonnet",
-  prompt: "Write C# code for send_code_to_revit that creates two DirectShape sloped roof panels.
-           West slope: eave at X=-500,Z=8000 to ridge X=19500,Z=10000. 
-           East slope: ridge X=20500,Z=10000 to eave X=40500,Z=8000.
-           Both run Y=-500 to 60500. Thickness 125mm perpendicular to slope.
-           Use mm/304.8 for ft conversion. No Transaction wrapper (already in one).
-           Return element IDs."
-})
-```
-
-**When NOT to delegate:** Simple models (< 10 elements), or when the entire workflow fits comfortably in one agent's context.
+Load `references/subagent-delegation.md` for the full delegation protocol, dispatch rules, and example prompts.
 
 ### Execution rules
 
@@ -232,13 +203,14 @@ When a tool call fails:
    - **Family type not found** → call `get_available_family_types` to find alternatives
    - **Level not found** → verify level names/IDs from previous creation steps
    - **Invalid geometry** → check coordinates, ensure start ≠ end point, verify winding order for surfaces
-   - **DirectShape/TessellatedShapeBuilder failed** → look for degenerate faces, repeated points, non-planar face loops, wrong winding, or invalid polygon offsets; split triangles from quads when needed
+   - **Native family/type missing** → query existing types, duplicate the closest native type, load/create a family, or ask the user for the correct family path before using placeholders
+   - **DirectShape/TessellatedShapeBuilder failed** → this should only occur for approved placeholders; look for degenerate faces, repeated points, non-planar face loops, wrong winding, or invalid polygon offsets; split triangles from quads when needed
    - **Timeout** → reduce batch size and retry
    - **Tool not found** → the MCP server may need restart. Inform the user.
    - **`Invalid JSON` from socket bridge** → payload is likely too large for the Revit plugin socket buffer; switch to a compiled helper DLL plus short bootstrap snippet
    - **`Exception has been thrown by the target of an invocation`** → wrap reflection calls and return `InnerException.Message`, `InnerException.GetType().FullName`, and stack trace before changing geometry logic
 3. Fix the parameters and retry the failed operation with the SAME tool.
-4. Only fall back to `send_code_to_revit` if the dedicated tool has a confirmed bug that prevents the specific operation.
+4. Only fall back to `send_code_to_revit` if the dedicated tool has a confirmed bug that prevents the specific operation; keep the fallback native-first and do not convert the element to DirectShape unless explicitly approved.
 5. If the error persists after 2 retries, log it and continue with remaining tasks.
 
 ### Command gaps
@@ -303,7 +275,7 @@ Always end with a structured report:
 
 ### Tool usage summary
 
-At the end of the report, include a tool usage breakdown so the user can verify dedicated tools were used:
+At the end of the report, include a tool usage breakdown so the user can verify dedicated tools were used and DirectShape was not silently substituted for native BIM:
 
 ```
 ### Thống kê Tool sử dụng
@@ -315,6 +287,7 @@ At the end of the report, include a tool usage breakdown so the user can verify 
 - create_sloped_roof: 1 call (1 roof)
 - create_parametric_door: 1 call (4 doors)
 - send_code_to_revit: 1 call (join geometry — no dedicated tool)
+- DirectShape placeholders: 0
 - snapshot_workspace: 1 call (verification)
 ```
 
@@ -333,4 +306,4 @@ At the end of the report, include a tool usage breakdown so the user can verify 
 - Use `.agents/skills/run-revit-mcp/scripts/Invoke-RevitMcpJsonRpc.ps1` for JSON-RPC calls and compile+run helper DLL workflows.
 - Keep socket payloads small; use compiled helper DLLs for long C# modeling logic.
 - When dynamically loading helper DLLs, rebuild to a versioned filename after each change because Revit locks loaded assemblies. The bundled helper script does this automatically.
-- For generated DirectShape models, verify both category counts and a visual snapshot, then clearly report DirectShape/native BIM tradeoffs.
+- Do not generate DirectShape models by default. If DirectShape is approved, verify both category counts and a visual snapshot, then clearly report which elements are non-native and what editable native replacement is still needed.

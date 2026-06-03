@@ -156,6 +156,30 @@ public static class CreationTools
         return await SendCommand("create_curtain_wall", new { data });
     }
 
+    [McpServerTool(Name = "create_stacked_wall")]
+    [Description("Create one or more native stacked walls. Use this for vertical facade bands such as brick + louver + cladding instead of separate wall strips.")]
+    public static async Task<string> CreateStackedWall(
+        [Description("Array of stacked wall objects matching the TypeScript tool schema. Requires an existing native Stacked Wall type by typeId or typeName.")] JsonElement data)
+    {
+        return await SendCommand("create_stacked_wall", new { data });
+    }
+
+    [McpServerTool(Name = "create_or_update_basic_wall_type")]
+    [Description("Create or update native Basic Wall types with editable compound layers, material functions, thicknesses, and materials. Does not use split regions.")]
+    public static async Task<string> CreateOrUpdateBasicWallType(
+        [Description("Array of basic wall type definitions. Each layer thickness is in millimeters and maps to a native CompoundStructureLayer.")] JsonElement data)
+    {
+        return await SendCommand("create_or_update_basic_wall_type", new { data });
+    }
+
+    [McpServerTool(Name = "inspect_stacked_wall_type")]
+    [Description("Inspect an existing native Stacked Wall type by creating a temporary rolled-back sample wall and reporting its member Basic Wall types.")]
+    public static async Task<string> InspectStackedWallType(
+        [Description("Stacked wall type lookup options: typeId, typeName, sampleHeight, sampleLength, and baseLevel in millimeters.")] JsonElement data)
+    {
+        return await SendCommand("inspect_stacked_wall_type", data);
+    }
+
     [McpServerTool(Name = "create_dimensions")]
     [Description("Create dimension annotations in the current Revit view.")]
     public static async Task<string> CreateDimensions(

@@ -49,14 +49,14 @@ try {
         throw "Missing JSON-RPC bridge script: $bridgeScript"
     }
 
-    $tempParams = New-TemporaryFile
-    Set-Content -Path $tempParams.FullName -Value $canonicalParams -Encoding UTF8
+    $tempParamsPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), ([System.IO.Path]::GetRandomFileName()))
+    Set-Content -Path $tempParamsPath -Value $canonicalParams -Encoding UTF8
 
     $job = Start-Job -ScriptBlock {
         param($scriptPath, $method, $paramsFile, $timeoutSeconds)
         $json = Get-Content -Path $paramsFile -Raw
         & $scriptPath -Method $method -ParamsJson $json -TimeoutSeconds $timeoutSeconds
-    } -ArgumentList $bridgeScript, $CommandName, $tempParams.FullName, $TimeoutSeconds
+    } -ArgumentList $bridgeScript, $CommandName, $tempParamsPath, $TimeoutSeconds
 
     if (-not (Wait-Job $job -Timeout $TimeoutSeconds)) {
         Stop-Job $job
@@ -101,7 +101,7 @@ try {
     if ($job) {
         Remove-Job $job -Force -ErrorAction SilentlyContinue
     }
-    if ($tempParams -and (Test-Path $tempParams.FullName)) {
-        Remove-Item -LiteralPath $tempParams.FullName -Force -ErrorAction SilentlyContinue
+    if ($tempParamsPath -and (Test-Path $tempParamsPath)) {
+        Remove-Item -LiteralPath $tempParamsPath -Force -ErrorAction SilentlyContinue
     }
 }

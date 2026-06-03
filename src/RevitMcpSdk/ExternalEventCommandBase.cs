@@ -13,6 +13,7 @@ public abstract class ExternalEventCommandBase : IRevitCommand
     {
         _handler = handler;
         _uiApp = uiApp;
+        _externalEvent = ExternalEvent.Create(_handler);
     }
 
     protected IExternalEventHandler Handler => _handler;
@@ -22,8 +23,7 @@ public abstract class ExternalEventCommandBase : IRevitCommand
 
     protected bool RaiseAndWaitForCompletion(int timeoutMs)
     {
-        _externalEvent ??= ExternalEvent.Create(_handler);
-        _externalEvent.Raise();
+        _externalEvent!.Raise();
 
         if (_handler is IWaitableExternalEventHandler waitable)
             return waitable.WaitForCompletion(timeoutMs);
