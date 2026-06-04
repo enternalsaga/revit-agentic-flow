@@ -4,6 +4,38 @@ import { ChatMessage, AiSettings, TokenUsage, ViewMode } from './types';
 import ChatPanel from './components/ChatPanel';
 import SettingsPanel from './components/SettingsPanel';
 
+type BackendAiSettings = Partial<AiSettings> & {
+  ActiveModel?: string;
+  Providers?: Record<string, any>;
+};
+
+const normalizeSettings = (payload: unknown): AiSettings => {
+  const data = (payload || {}) as BackendAiSettings;
+  const rawProviders = data.providers || data.Providers || {};
+  const providers = Object.fromEntries(
+    Object.entries(rawProviders).map(([id, provider]) => [
+      id,
+      {
+        id,
+        protocol: provider.protocol || provider.Protocol || '',
+        baseUrl: provider.baseUrl || provider.BaseUrl || '',
+        apiKey: provider.apiKey || provider.ApiKey || '',
+        models: (provider.models || provider.Models || []).map((model: any) => ({
+          id: model.id || model.Id || '',
+          label: model.label || model.Label || '',
+          speed: model.speed || model.Speed || 'medium',
+        })),
+        headers: provider.headers || provider.Headers,
+      },
+    ])
+  );
+
+  return {
+    activeModel: data.activeModel || data.ActiveModel || 'claude-sonnet-4-6',
+    providers,
+  };
+};
+
 export default function App() {
   const [view, setView] = useState<ViewMode>('chat');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -47,7 +79,7 @@ export default function App() {
     });
 
     onBackendMessage('settings_loaded', (payload) => {
-      setSettings(payload as AiSettings);
+      setSettings(normalizeSettings(payload));
     });
   }, []);
 

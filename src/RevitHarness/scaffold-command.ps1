@@ -44,82 +44,33 @@ function Get-SwitchOrCreate3DViewCommand {
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Newtonsoft.Json.Linq;
-using RevitMCPSDK.API.Base;
+using RevitMcpSdk;
 
 namespace RevitMCPCommandSet.Commands
 {
     public class SwitchOrCreate3DViewCommand : ExternalEventCommandBase
     {
+        private SwitchOrCreate3DViewEventHandler _handler => (SwitchOrCreate3DViewEventHandler)Handler;
+
         public override string CommandName => "switch_or_create_3d_view";
 
-        public SwitchOrCreate3DViewCommand(UIApplication uiApp) : base(uiApp)
+        public SwitchOrCreate3DViewCommand(UIApplication uiApp)
+            : base(new SwitchOrCreate3DViewEventHandler(), uiApp)
         {
         }
 
-        protected override object ExecuteInTransaction(JObject parameters, string requestId)
+        public override object Execute(JObject parameters, string requestId)
         {
-            var viewName = parameters["viewName"]?.ToString();
-            if (string.IsNullOrWhiteSpace(viewName))
-                viewName = "MCP_3D_Verification";
+            _handler.SetParameters(parameters);
 
-            var detailLevelText = parameters["detailLevel"]?.ToString();
-            if (string.IsNullOrWhiteSpace(detailLevelText))
-                detailLevelText = "Fine";
-
-            var activate = parameters["activate"]?.Value<bool?>() ?? true;
-            var doc = UiApplication.ActiveUIDocument.Document;
-
-            View3D view = null;
-            foreach (var existing in new FilteredElementCollector(doc).OfClass(typeof(View3D)))
+            if (RaiseAndWaitForCompletion(10000))
             {
-                var candidate = existing as View3D;
-                if (candidate != null && !candidate.IsTemplate && candidate.Name == viewName)
-                {
-                    view = candidate;
-                    break;
-                }
+                return _handler.Result;
             }
-
-            var created = false;
-            if (view == null)
-            {
-                ViewFamilyType viewFamilyType = null;
-                foreach (var item in new FilteredElementCollector(doc).OfClass(typeof(ViewFamilyType)))
-                {
-                    var candidate = item as ViewFamilyType;
-                    if (candidate != null && candidate.ViewFamily == ViewFamily.ThreeDimensional)
-                    {
-                        viewFamilyType = candidate;
-                        break;
-                    }
-                }
-
-                if (viewFamilyType == null)
-                    throw new InvalidOperationException("No 3D ViewFamilyType is available in this document.");
-
-                view = View3D.CreateIsometric(doc, viewFamilyType.Id);
-                view.Name = viewName;
-                created = true;
-            }
-
-            if (detailLevelText == "Coarse")
-                view.DetailLevel = ViewDetailLevel.Coarse;
-            else if (detailLevelText == "Medium")
-                view.DetailLevel = ViewDetailLevel.Medium;
             else
-                view.DetailLevel = ViewDetailLevel.Fine;
-
-            if (activate)
-                UiApplication.ActiveUIDocument.RequestViewChange(view);
-
-            return new
             {
-                success = true,
-                viewId = view.Id.Value,
-                viewName = view.Name,
-                created,
-                activated = activate
-            };
+                throw new TimeoutException("switch_or_create_3d_view operation timed out");
+            }
         }
     }
 }

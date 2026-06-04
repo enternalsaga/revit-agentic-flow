@@ -4,6 +4,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 
 namespace RevitMcpPlugin.AI;
 
@@ -11,6 +12,10 @@ public class WebView2Bridge : IDisposable
 {
     private readonly WebView2 _webView;
     private readonly ConcurrentDictionary<string, Action<string?>> _handlers = new();
+    private static readonly JsonSerializerSettings FrontendJsonSettings = new()
+    {
+        ContractResolver = new CamelCasePropertyNamesContractResolver()
+    };
     public event EventHandler<BridgeMessage>? MessageReceived;
 
     public WebView2Bridge(WebView2 webView)
@@ -44,7 +49,7 @@ public class WebView2Bridge : IDisposable
         try
         {
             string payloadJson = payload != null
-                ? JsonConvert.SerializeObject(payload)
+                ? JsonConvert.SerializeObject(payload, FrontendJsonSettings)
                 : "null";
             string escapedType = type.Replace("\\", "\\\\").Replace("'", "\\'");
             string script = $"if(window.revitMcp && window.revitMcp.onMessage) window.revitMcp.onMessage('{escapedType}', {payloadJson});";
