@@ -24,7 +24,7 @@ namespace RevitMcpSdk.Rag;
 ///
 /// Search: BM25 (keyword). Handles exact API name lookups perfectly.
 /// </summary>
-internal static class LocalRevitRagService
+public static class LocalRevitRagService
 {
     // Lazy-loaded index -- built on first call, cached for the process lifetime.
     // Volatile so the fast path (read outside _buildLock) sees a published

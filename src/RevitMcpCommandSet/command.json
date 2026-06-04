@@ -332,6 +332,11 @@
       "commandName": "switch_view",
       "description": "Switch the active view in Revit by name or ID. Defaults to {3D} view if no target specified.",
       "assemblyPath": "RevitMCPCommandSet.dll"
+    },
+    {
+      "commandName": "search_revit_api",
+      "description": "Search local Revit API documentation (RevitAPI.xml) using BM25 keyword matching. Returns top-3 relevant API class/member documentation.",
+      "assemblyPath": "RevitMCPCommandSet.dll"
     }
   ]
 }
