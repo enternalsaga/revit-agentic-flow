@@ -64,6 +64,18 @@ export default function MessageBubble({ message }: Props) {
             ))}
           </div>
         )}
+        {message.tokenUsage && !message.isUser && (
+          <div style={{
+            marginTop: 'var(--space-xs)', fontSize: 'var(--text-xs)', opacity: 0.5,
+            display: 'flex', gap: 'var(--space-sm)',
+          }}>
+            <span>in {message.tokenUsage.inputTokens}</span>
+            <span>out {message.tokenUsage.outputTokens}</span>
+            {!!message.tokenUsage.cachedInputTokens && message.tokenUsage.cachedInputTokens > 0 && (
+              <span>cached {message.tokenUsage.cachedInputTokens}</span>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

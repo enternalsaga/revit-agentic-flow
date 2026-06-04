@@ -207,7 +207,7 @@ pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius:
                     Post("streaming_end", new
                     {
                         text = "No LLM configured. Please set your API key in Settings.",
-                        usage = new { input_tokens = 0, output_tokens = 0 }
+                        usage = new { inputTokens = 0, outputTokens = 0 }
                     });
                     return;
                 }
@@ -309,9 +309,14 @@ pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius:
                     text = responseText,
                     usage = new
                     {
-                        input_tokens = response.InputTokens,
-                        output_tokens = response.OutputTokens,
-                        cached_input_tokens = response.CachedInputTokens
+                        inputTokens = response.InputTokens,
+                        outputTokens = response.OutputTokens,
+                        cachedInputTokens = response.CachedInputTokens,
+                        cacheCreationInputTokens = response.CacheCreationInputTokens,
+                        sessionInputTokens = TokenTracker.SessionInputTokens,
+                        sessionOutputTokens = TokenTracker.SessionOutputTokens,
+                        sessionCachedInputTokens = TokenTracker.SessionCachedInputTokens,
+                        sessionCacheHitRatio = TokenTracker.SessionCacheHitRatio
                     }
                 });
 
@@ -325,7 +330,7 @@ pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius:
             catch (Exception ex)
             {
                 Debug.WriteLine($"[AiPanelProvider] send_message error: {ex.Message}");
-                Post("streaming_end", new { text = $"Error: {ex.Message}", usage = new { input_tokens = 0, output_tokens = 0 } });
+                Post("streaming_end", new { text = $"Error: {ex.Message}", usage = new { inputTokens = 0, outputTokens = 0 } });
             }
             finally
             {

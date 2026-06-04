@@ -14,6 +14,12 @@ export interface ToolCallInfo {
 export interface TokenUsage {
   inputTokens: number;
   outputTokens: number;
+  cachedInputTokens?: number;
+  cacheCreationInputTokens?: number;
+  sessionInputTokens?: number;
+  sessionOutputTokens?: number;
+  sessionCachedInputTokens?: number;
+  sessionCacheHitRatio?: number;
 }
 
 export interface ProviderInfo {

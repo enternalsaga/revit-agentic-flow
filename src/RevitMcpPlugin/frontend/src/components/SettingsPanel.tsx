@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { AiSettings } from '../types';
+import { AiSettings, TokenUsage } from '../types';
 
 interface Props {
   settings: AiSettings | null;
+  usage?: TokenUsage | null;
   onSave: (settings: AiSettings) => void;
 }
 
@@ -15,7 +16,7 @@ const PROVIDER_LABELS: Record<string, string> = {
   openrouter: 'OpenRouter',
 };
 
-export default function SettingsPanel({ settings, onSave }: Props) {
+export default function SettingsPanel({ settings, usage, onSave }: Props) {
   const [localSettings, setLocalSettings] = useState<AiSettings>(
     settings || {
       activeModel: 'claude-sonnet-4-6',
@@ -97,6 +98,24 @@ export default function SettingsPanel({ settings, onSave }: Props) {
           </div>
         ))}
       </div>
+
+      {usage && (
+        <div style={{ marginTop: 'var(--space-xl)' }}>
+          <h4 style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: 'var(--space-sm)' }}>
+            Session Usage
+          </h4>
+          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', lineHeight: 1.8 }}>
+            <div>Input tokens: {usage.sessionInputTokens?.toLocaleString() ?? '—'}</div>
+            <div>Output tokens: {usage.sessionOutputTokens?.toLocaleString() ?? '—'}</div>
+            {usage.sessionCachedInputTokens != null && usage.sessionCachedInputTokens > 0 && (
+              <div>Cached tokens: {usage.sessionCachedInputTokens.toLocaleString()}</div>
+            )}
+            {usage.sessionCacheHitRatio != null && usage.sessionCacheHitRatio > 0 && (
+              <div>Cache hit ratio: {(usage.sessionCacheHitRatio * 100).toFixed(1)}%</div>
+            )}
+          </div>
+        </div>
+      )}
 
       <div style={{ marginTop: 'var(--space-xl)', paddingTop: 'var(--space-lg)', borderTop: '1px solid var(--color-border)' }}>
         <button

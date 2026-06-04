@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { sendToBackend, onBackendMessage } from './bridge';
-import { ChatMessage, AiSettings, ViewMode } from './types';
+import { ChatMessage, AiSettings, TokenUsage, ViewMode } from './types';
 import ChatPanel from './components/ChatPanel';
 import SettingsPanel from './components/SettingsPanel';
 
@@ -11,6 +11,7 @@ export default function App() {
   const [streamingText, setStreamingText] = useState('');
   const [statusText, setStatusText] = useState<string | null>(null);
   const [settings, setSettings] = useState<AiSettings | null>(null);
+  const [lastUsage, setLastUsage] = useState<TokenUsage | null>(null);
   const streamingTextRef = useRef('');
 
   // Register backend message handlers once
@@ -23,13 +24,15 @@ export default function App() {
     });
 
     onBackendMessage('streaming_end', (payload) => {
-      const data = payload as { text?: string } | null;
+      const data = payload as { text?: string; usage?: TokenUsage } | null;
       const finalText = data?.text || streamingTextRef.current;
+      const usage = data?.usage || undefined;
+      setLastUsage(usage || null);
       setMessages(prev => {
         const updated = [...prev];
         if (updated.length > 0 && !updated[updated.length - 1].isUser) {
           const last = updated[updated.length - 1];
-          updated[updated.length - 1] = { ...last, text: finalText || last.text };
+          updated[updated.length - 1] = { ...last, text: finalText || last.text, tokenUsage: usage };
         }
         return updated;
       });
@@ -100,6 +103,7 @@ export default function App() {
       ) : (
         <SettingsPanel
           settings={settings}
+          usage={lastUsage}
           onSave={(s) => {
             sendToBackend('save_settings', s);
             setSettings(s);
