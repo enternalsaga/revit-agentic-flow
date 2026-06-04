@@ -102,6 +102,14 @@ Neu chi sua RevitMcpServer thi khong can restart Revit. Nhung cac DLL add-in da 
 }
 
 if (-not $SkipBuild) {
+    # Clean stale build output to prevent native DLL version mismatches from incremental builds.
+    # Native binaries (e.g. WebView2Loader.dll) survive incremental builds even after NuGet version changes.
+    $pluginBuildDir = Join-Path $repoRoot "build\bin\RevitMcpPlugin\Release\$targetFramework"
+    if (Test-Path $pluginBuildDir) {
+        Remove-Item -LiteralPath $pluginBuildDir -Recurse -Force
+        Write-Host "[deploy] Cleaned stale plugin build output: $pluginBuildDir"
+    }
+
     $frontendDir = Join-Path $repoRoot "src\RevitMcpPlugin\frontend"
     Invoke-Npm ci --prefix $frontendDir
     Invoke-Npm run build --prefix $frontendDir
@@ -123,10 +131,16 @@ $deployedCommandDll = Join-Path $commandTarget "RevitMCPCommandSet.dll"
 Assert-DeployFileNotLocked -Path $deployedPluginDll -Label "RevitMcpPlugin.dll"
 Assert-DeployFileNotLocked -Path $deployedCommandDll -Label "RevitMCPCommandSet.dll"
 
-New-Item -ItemType Directory -Path $target -Force | Out-Null
-if (Test-Path $commandTarget) {
-    Remove-Item -LiteralPath $commandTarget -Recurse -Force
+if (Test-Path $target) {
+    Remove-Item -LiteralPath $target -Recurse -Force
 }
+# Clean legacy stale folder from pre-refactor deployments (not referenced by any .addin)
+$legacyCommandSet = Join-Path $addins "RevitMCPCommandSet"
+if (Test-Path $legacyCommandSet) {
+    Remove-Item -LiteralPath $legacyCommandSet -Recurse -Force
+    Write-Host "[deploy] Cleaned legacy stale folder: $legacyCommandSet"
+}
+New-Item -ItemType Directory -Path $target -Force | Out-Null
 New-Item -ItemType Directory -Path $commandTarget -Force | Out-Null
 
 $pluginOutput = Join-Path $repoRoot "build\bin\RevitMcpPlugin\Release\$targetFramework"

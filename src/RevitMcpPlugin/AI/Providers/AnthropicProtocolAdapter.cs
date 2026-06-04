@@ -1,7 +1,6 @@
 using System;
 using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,13 +14,12 @@ namespace RevitMcpPlugin.AI
         private readonly string _apiKey;
         private readonly string _modelId;
         private readonly string _endpoint;
-        private readonly HttpClient _httpClient;
         private readonly Dictionary<string, string>? _customHeaders;
 
         public string ProviderName => "anthropic";
         public string ModelId => _modelId;
 
-        public AnthropicProtocolAdapter(ProviderConfig config, string modelId, HttpClient httpClient)
+        public AnthropicProtocolAdapter(ProviderConfig config, string modelId)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
@@ -31,7 +29,6 @@ namespace RevitMcpPlugin.AI
                 throw new ArgumentException("Model id is required.", nameof(modelId));
             _apiKey = config.ApiKey;
             _modelId = modelId;
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _customHeaders = config.Headers;
             _endpoint = BuildEndpoint(config.BaseUrl);
         }
@@ -84,23 +81,8 @@ namespace RevitMcpPlugin.AI
                 }
             }
 
-            using (var request = new HttpRequestMessage(HttpMethod.Post, _endpoint))
-            {
-                request.Content = new StringContent(
-                    requestBody.ToString(Formatting.None), Encoding.UTF8, "application/json");
-                request.Headers.Add("x-api-key", _apiKey);
-                request.Headers.Add("anthropic-version", "2023-06-01");
-                request.Headers.Add("anthropic-beta", "prompt-caching-2024-07-31");
-                AddCustomHeaders(request);
-
-                using (var response = await _httpClient.SendAsync(request, ct))
-                {
-                    string body = await response.Content.ReadAsStringAsync();
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException($"Anthropic API {(int)response.StatusCode}: {body}");
-                    return JObject.Parse(body);
-                }
-            }
+            string body = await SendJsonAsync(requestBody, stream: false, ct);
+            return JObject.Parse(body);
         }
 
         public async Task<StreamResult> SendStreamingAsync(
@@ -124,76 +106,108 @@ namespace RevitMcpPlugin.AI
                 ["messages"] = messages ?? new JArray()
             };
 
-            using (var request = new HttpRequestMessage(HttpMethod.Post, _endpoint))
+            using (var response = await SendRequestAsync(requestBody, stream: true, ct))
             {
-                request.Content = new StringContent(
-                    requestBody.ToString(Formatting.None), Encoding.UTF8, "application/json");
-                request.Headers.Add("x-api-key", _apiKey);
-                request.Headers.Add("anthropic-version", "2023-06-01");
-                request.Headers.Add("anthropic-beta", "prompt-caching-2024-07-31");
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-                AddCustomHeaders(request);
+                var fullText = new StringBuilder();
+                int inputTokens = 0, outputTokens = 0, cachedTokens = 0, cacheCreationTokens = 0;
 
-                using (var httpResponse = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct))
+                using (var stream = response.GetResponseStream())
+                using (var reader = new StreamReader(stream ?? Stream.Null))
                 {
-                    if (!httpResponse.IsSuccessStatusCode)
+                    string? currentEvent = null;
+                    var currentData = new StringBuilder();
+                    string? line;
+                    while ((line = await reader.ReadLineAsync()) != null)
                     {
-                        string error = await httpResponse.Content.ReadAsStringAsync();
-                        throw new HttpRequestException($"Anthropic API {(int)httpResponse.StatusCode}: {error}");
-                    }
-
-                    var fullText = new StringBuilder();
-                    int inputTokens = 0, outputTokens = 0, cachedTokens = 0, cacheCreationTokens = 0;
-
-                    using (var stream = await httpResponse.Content.ReadAsStreamAsync())
-                    using (var reader = new StreamReader(stream))
-                    {
-                        string? currentEvent = null;
-                        var currentData = new StringBuilder();
-                        string? line;
-                        while ((line = await reader.ReadLineAsync()) != null)
+                        if (line.Length == 0)
                         {
-                            if (line.Length == 0)
-                            {
-                                ProcessSseEvent(currentEvent, currentData.ToString(), fullText, onTextDelta,
-                                    ref inputTokens, ref outputTokens, ref cachedTokens, ref cacheCreationTokens);
-                                currentEvent = null;
-                                currentData.Clear();
-                                continue;
-                            }
-                            if (line.StartsWith("event:", StringComparison.OrdinalIgnoreCase))
-                            {
-                                currentEvent = line.Substring("event:".Length).Trim();
-                                continue;
-                            }
-                            if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-                            {
-                                if (currentData.Length > 0) currentData.AppendLine();
-                                currentData.Append(line.Substring("data:".Length).TrimStart());
-                            }
+                            ProcessSseEvent(currentEvent, currentData.ToString(), fullText, onTextDelta,
+                                ref inputTokens, ref outputTokens, ref cachedTokens, ref cacheCreationTokens);
+                            currentEvent = null;
+                            currentData.Clear();
+                            continue;
                         }
-                        ProcessSseEvent(currentEvent, currentData.ToString(), fullText, onTextDelta,
-                            ref inputTokens, ref outputTokens, ref cachedTokens, ref cacheCreationTokens);
+                        if (line.StartsWith("event:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            currentEvent = line.Substring("event:".Length).Trim();
+                            continue;
+                        }
+                        if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (currentData.Length > 0) currentData.AppendLine();
+                            currentData.Append(line.Substring("data:".Length).TrimStart());
+                        }
                     }
+                    ProcessSseEvent(currentEvent, currentData.ToString(), fullText, onTextDelta,
+                        ref inputTokens, ref outputTokens, ref cachedTokens, ref cacheCreationTokens);
+                }
 
-                    return new StreamResult
+                return new StreamResult
+                {
+                    FullText = fullText.ToString(),
+                    InputTokens = inputTokens,
+                    OutputTokens = outputTokens,
+                    CachedInputTokens = cachedTokens,
+                    CacheCreationInputTokens = cacheCreationTokens
+                };
+            }
+        }
+
+        private async Task<string> SendJsonAsync(JObject requestBody, bool stream, CancellationToken ct)
+        {
+            using (var response = await SendRequestAsync(requestBody, stream, ct))
+            using (var responseStream = response.GetResponseStream())
+            using (var reader = new StreamReader(responseStream ?? Stream.Null))
+            {
+                return await reader.ReadToEndAsync();
+            }
+        }
+
+        private async Task<HttpWebResponse> SendRequestAsync(JObject requestBody, bool stream, CancellationToken ct)
+        {
+            // Revit 2024 preloads System.Net.Http 4.0.0.0, so use HttpWebRequest for host compatibility.
+#pragma warning disable SYSLIB0014
+            var request = (HttpWebRequest)WebRequest.Create(_endpoint);
+#pragma warning restore SYSLIB0014
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.Accept = stream ? "text/event-stream" : "application/json";
+            request.Timeout = (int)TimeSpan.FromMinutes(5).TotalMilliseconds;
+            request.ReadWriteTimeout = request.Timeout;
+            request.Headers.Add("x-api-key", _apiKey);
+            request.Headers.Add("anthropic-version", "2023-06-01");
+            request.Headers.Add("anthropic-beta", "prompt-caching-2024-07-31");
+            AddCustomHeaders(request);
+
+            using (ct.Register(() => request.Abort(), useSynchronizationContext: false))
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(requestBody.ToString(Formatting.None));
+                using (var requestStream = await request.GetRequestStreamAsync())
+                    await requestStream.WriteAsync(bytes, 0, bytes.Length, ct);
+
+                try
+                {
+                    return (HttpWebResponse)await request.GetResponseAsync();
+                }
+                catch (WebException ex) when (ex.Response is HttpWebResponse errorResponse)
+                {
+                    using (errorResponse)
+                    using (var errorStream = errorResponse.GetResponseStream())
+                    using (var reader = new StreamReader(errorStream ?? Stream.Null))
                     {
-                        FullText = fullText.ToString(),
-                        InputTokens = inputTokens,
-                        OutputTokens = outputTokens,
-                        CachedInputTokens = cachedTokens,
-                        CacheCreationInputTokens = cacheCreationTokens
-                    };
+                        string error = await reader.ReadToEndAsync();
+                        throw new InvalidOperationException($"Anthropic API {(int)errorResponse.StatusCode}: {error}", ex);
+                    }
                 }
             }
         }
 
-        private void AddCustomHeaders(HttpRequestMessage request)
+        private void AddCustomHeaders(HttpWebRequest request)
         {
             if (_customHeaders == null) return;
             foreach (var header in _customHeaders)
             {
-                request.Headers.Add(header.Key, header.Value);
+                request.Headers[header.Key] = header.Value;
             }
         }
 

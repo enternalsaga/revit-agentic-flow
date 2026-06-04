@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Autodesk.Revit.UI;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -41,8 +42,25 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
 
     private static readonly string SystemPrompt = SystemPromptBuilder.Build();
 
+    private static readonly string DiagLogPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "RevitMCP", "ai-panel-debug.log");
+
+    private static void DiagLog(string message)
+    {
+        try
+        {
+            var dir = Path.GetDirectoryName(DiagLogPath)!;
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            File.AppendAllText(DiagLogPath,
+                $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}");
+        }
+        catch { /* best-effort */ }
+    }
+
     public void SetupDockablePane(DockablePaneProviderData data)
     {
+        DiagLog("SetupDockablePane START");
         _hostGrid = new Grid();
         _webView = new WebView2
         {
@@ -50,6 +68,7 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
             VerticalAlignment = VerticalAlignment.Stretch
         };
         _hostGrid.Children.Add(_webView);
+        _webView.Loaded += OnWebViewLoaded;
 
         data.FrameworkElement = _hostGrid;
         data.InitialState = new DockablePaneState
@@ -58,20 +77,73 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
             TabBehind = DockablePanes.BuiltInDockablePanes.ProjectBrowser
         };
 
-        _ = InitializeWebViewAsync();
+        DiagLog("SetupDockablePane - waiting for WebView Loaded");
+    }
+
+    private void OnWebViewLoaded(object sender, RoutedEventArgs e)
+    {
+        if (_webView == null) return;
+
+        _webView.Loaded -= OnWebViewLoaded;
+        DiagLog("WebView Loaded - scheduling InitializeWebViewAsync at ApplicationIdle");
+        _webView.Dispatcher.BeginInvoke(
+            new Action(() => _ = InitializeWebViewAsync()),
+            DispatcherPriority.ApplicationIdle);
     }
 
     private async Task InitializeWebViewAsync()
     {
-        if (_initialized) return;
-        if (_webView == null) return;
+        DiagLog("InitializeWebViewAsync START");
+        if (_initialized) { DiagLog("Already initialized, returning"); return; }
+        if (_webView == null) { DiagLog("_webView is null, returning"); return; }
         try
         {
+            DiagLog("Step 1: GetAvailableBrowserVersionString");
+            string? runtimeVersion = null;
+            try
+            {
+                runtimeVersion = CoreWebView2Environment.GetAvailableBrowserVersionString();
+                DiagLog($"Runtime version: {runtimeVersion}");
+            }
+            catch (Exception verEx)
+            {
+                DiagLog($"Cannot detect WebView2 Runtime: {verEx.Message}");
+            }
+
+            var sdkAssembly = typeof(CoreWebView2Environment).Assembly;
+            var sdkVersion = sdkAssembly.GetName().Version?.ToString() ?? "unknown";
+            DiagLog($"SDK version: {sdkVersion}, Runtime: {runtimeVersion ?? "NOT INSTALLED"}");
+            DiagLog($"SDK assembly path: {sdkAssembly.Location}");
+            // Dump ALL WebView2 assemblies loaded in AppDomain
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (asm.FullName?.Contains("WebView2") == true)
+                    DiagLog($"  AppDomain WebView2 asm: {asm.FullName} @ {asm.Location}");
+            }
+            if (runtimeVersion == null)
+            {
+                DiagLog("Runtime NOT found - showing diagnostic");
+                ShowDiagnosticText(
+                    "WebView2 Runtime not found",
+                    "Microsoft Edge WebView2 Runtime is not installed on this machine.",
+                    "Download and install from: https://developer.microsoft.com/en-us/microsoft-edge/webview2/\nThen restart Revit.");
+                return;
+            }
+
+            DiagLog("Step 2: EnsureCoreWebView2Async via explicit environment");
+            DiagLog($"Current thread: {System.Threading.Thread.CurrentThread.ManagedThreadId}, " +
+                    $"IsBackground={System.Threading.Thread.CurrentThread.IsBackground}, " +
+                    $"ApartmentState={System.Threading.Thread.CurrentThread.GetApartmentState()}, " +
+                    $"Dispatcher={_webView.Dispatcher.Thread.ManagedThreadId}");
             string userDataFolder = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "RevitMCP", "WebView2");
+            DiagLog($"UserDataFolder: {userDataFolder}");
+
             var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
+            DiagLog("Step 3: CoreWebView2Environment.CreateAsync OK");
             await _webView.EnsureCoreWebView2Async(env);
+            DiagLog("Step 4: WebView2 initialized OK");
             _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
             _webView.CoreWebView2.ProcessFailed += OnProcessFailed;
 
@@ -106,11 +178,22 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
         }
         catch (Exception ex)
         {
+            DiagLog($"INIT FAILED: {ex}");
             Debug.WriteLine($"[AiPanelProvider] Init failed: {ex.Message}");
+
+            string sdkVer;
+            try { sdkVer = typeof(CoreWebView2Environment).Assembly.GetName().Version?.ToString() ?? "?"; }
+            catch { sdkVer = "?"; }
+
+            string rtVer;
+            try { rtVer = CoreWebView2Environment.GetAvailableBrowserVersionString() ?? "?"; }
+            catch { rtVer = "?"; }
+
             ShowDiagnosticText(
                 "WebView2 initialization failed",
-                ex.Message,
-                "Ensure Microsoft Edge WebView2 Runtime is installed, then restart Revit.");
+                $"{ex.Message}\n\nSDK: {sdkVer} | Runtime: {rtVer}",
+                "Ensure Microsoft Edge WebView2 Runtime is installed, then restart Revit.\n"
+                + "If this persists, the SDK and Runtime versions may be incompatible.");
         }
     }
 
@@ -418,15 +501,17 @@ pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius:
     {
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
-        if (_webView?.CoreWebView2 != null)
+        try
         {
-            try
+            var coreWebView = _webView?.CoreWebView2;
+            if (coreWebView != null)
             {
-                _webView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
-                _webView.CoreWebView2.ProcessFailed -= OnProcessFailed;
+                coreWebView.NavigationCompleted -= OnNavigationCompleted;
+                coreWebView.ProcessFailed -= OnProcessFailed;
             }
-            catch { /* WebView2 may already be disposed */ }
         }
+        catch { /* WebView2 may already be disposed */ }
+
         _bridge?.Dispose();
         _webView?.Dispose();
     }

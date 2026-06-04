@@ -1,8 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Http;
-using System.Net.Http.Headers;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,14 +21,13 @@ namespace RevitMcpPlugin.AI
         private readonly string _apiKey;
         private readonly string _modelId;
         private readonly string _endpoint;
-        private readonly HttpClient _httpClient;
         private readonly Dictionary<string, string>? _customHeaders;
         private readonly bool _isGeminiAuth;
 
         public string ProviderName => "openai";
         public string ModelId => _modelId;
 
-        public OpenAIProtocolAdapter(ProviderConfig config, string modelId, HttpClient httpClient)
+        public OpenAIProtocolAdapter(ProviderConfig config, string modelId)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config));
@@ -39,7 +37,6 @@ namespace RevitMcpPlugin.AI
                 throw new ArgumentException("Model id is required.", nameof(modelId));
             _apiKey = config.ApiKey;
             _modelId = modelId;
-            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _customHeaders = config.Headers;
             _isGeminiAuth = config.BaseUrl?.IndexOf("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) >= 0 == true;
             _endpoint = BuildEndpoint(config.BaseUrl ?? "", _isGeminiAuth ? _apiKey : null);
@@ -83,24 +80,9 @@ namespace RevitMcpPlugin.AI
             if (tools != null && tools.Count > 0)
                 requestBody["tools"] = TranslateToolsToOpenAI(tools);
 
-            using (var request = new HttpRequestMessage(HttpMethod.Post, _endpoint))
-            {
-                request.Content = new StringContent(
-                    requestBody.ToString(Formatting.None), Encoding.UTF8, "application/json");
-                if (!_isGeminiAuth)
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                AddCustomHeaders(request);
-
-                using (var response = await _httpClient.SendAsync(request, ct))
-                {
-                    string body = await response.Content.ReadAsStringAsync();
-                    if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException($"OpenAI API {(int)response.StatusCode}: {body}");
-
-                    var openAiResponse = JObject.Parse(body);
-                    return TranslateResponseToAnthropic(openAiResponse);
-                }
-            }
+            string body = await SendJsonAsync(requestBody, stream: false, ct);
+            var openAiResponse = JObject.Parse(body);
+            return TranslateResponseToAnthropic(openAiResponse);
         }
 
         public async Task<StreamResult> SendStreamingAsync(
@@ -120,69 +102,52 @@ namespace RevitMcpPlugin.AI
             // Some providers require stream_options to emit usage in chunks
             requestBody["stream_options"] = new JObject { ["include_usage"] = true };
 
-            using (var request = new HttpRequestMessage(HttpMethod.Post, _endpoint))
+            using (var response = await SendRequestAsync(requestBody, stream: true, ct))
             {
-                request.Content = new StringContent(
-                    requestBody.ToString(Formatting.None), Encoding.UTF8, "application/json");
-                if (!_isGeminiAuth)
-                    request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _apiKey);
-                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/event-stream"));
-                AddCustomHeaders(request);
+                var fullText = new StringBuilder();
+                var toolCalls = new List<JObject>();
+                int inputTokens = 0, outputTokens = 0;
+                var toolCallBuffers = new Dictionary<int, StringBuilder>();
 
-                using (var httpResponse = await _httpClient.SendAsync(
-                    request, HttpCompletionOption.ResponseHeadersRead, ct))
+                using (var stream = response.GetResponseStream())
+                using (var reader = new StreamReader(stream ?? Stream.Null))
                 {
-                    if (!httpResponse.IsSuccessStatusCode)
+                    string? line;
+                    while ((line = await reader.ReadLineAsync()) != null)
                     {
-                        string error = await httpResponse.Content.ReadAsStringAsync();
-                        throw new HttpRequestException($"OpenAI API {(int)httpResponse.StatusCode}: {error}");
-                    }
+                        if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+                            continue;
 
-                    var fullText = new StringBuilder();
-                    var toolCalls = new List<JObject>();
-                    int inputTokens = 0, outputTokens = 0;
-                    var toolCallBuffers = new Dictionary<int, StringBuilder>();
-
-                    using (var stream = await httpResponse.Content.ReadAsStreamAsync())
-                    using (var reader = new StreamReader(stream))
-                    {
-                        string? line;
-                        while ((line = await reader.ReadLineAsync()) != null)
+                        string data = line.Substring("data:".Length).TrimStart();
+                        if (data == "[DONE]")
                         {
-                            if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
-                                continue;
+                            FinalizeAllToolCalls(toolCalls, toolCallBuffers);
+                            break;
+                        }
 
-                            string data = line.Substring("data:".Length).TrimStart();
-                            if (data == "[DONE]")
-                            {
-                                FinalizeAllToolCalls(toolCalls, toolCallBuffers);
-                                break;
-                            }
+                        if (string.IsNullOrWhiteSpace(data))
+                            continue;
 
-                            if (string.IsNullOrWhiteSpace(data))
-                                continue;
-
-                            try
-                            {
-                                ProcessSseChunk(data, fullText, toolCalls, toolCallBuffers,
-                                    onTextDelta, ref inputTokens, ref outputTokens);
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine(
-                                    $"[OpenAIProtocolAdapter] SSE parse skipped: {ex.Message}");
-                            }
+                        try
+                        {
+                            ProcessSseChunk(data, fullText, toolCalls, toolCallBuffers,
+                                onTextDelta, ref inputTokens, ref outputTokens);
+                        }
+                        catch (Exception ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine(
+                                $"[OpenAIProtocolAdapter] SSE parse skipped: {ex.Message}");
                         }
                     }
-
-                    return new StreamResult
-                    {
-                        FullText = fullText.ToString(),
-                        InputTokens = inputTokens,
-                        OutputTokens = outputTokens,
-                        ToolUseBlocks = toolCalls.Count > 0 ? new JArray(toolCalls) : null
-                    };
                 }
+
+                return new StreamResult
+                {
+                    FullText = fullText.ToString(),
+                    InputTokens = inputTokens,
+                    OutputTokens = outputTokens,
+                    ToolUseBlocks = toolCalls.Count > 0 ? new JArray(toolCalls) : null
+                };
             }
         }
 
@@ -632,12 +597,60 @@ namespace RevitMcpPlugin.AI
             }
         }
 
-        private void AddCustomHeaders(HttpRequestMessage request)
+        private async Task<string> SendJsonAsync(JObject requestBody, bool stream, CancellationToken ct)
+        {
+            using (var response = await SendRequestAsync(requestBody, stream, ct))
+            using (var responseStream = response.GetResponseStream())
+            using (var reader = new StreamReader(responseStream ?? Stream.Null))
+            {
+                return await reader.ReadToEndAsync();
+            }
+        }
+
+        private async Task<HttpWebResponse> SendRequestAsync(JObject requestBody, bool stream, CancellationToken ct)
+        {
+            // Revit 2024 preloads System.Net.Http 4.0.0.0, so use HttpWebRequest for host compatibility.
+#pragma warning disable SYSLIB0014
+            var request = (HttpWebRequest)WebRequest.Create(_endpoint);
+#pragma warning restore SYSLIB0014
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.Accept = stream ? "text/event-stream" : "application/json";
+            request.Timeout = (int)TimeSpan.FromMinutes(5).TotalMilliseconds;
+            request.ReadWriteTimeout = request.Timeout;
+            if (!_isGeminiAuth)
+                request.Headers[HttpRequestHeader.Authorization] = $"Bearer {_apiKey}";
+            AddCustomHeaders(request);
+
+            using (ct.Register(() => request.Abort(), useSynchronizationContext: false))
+            {
+                byte[] bytes = Encoding.UTF8.GetBytes(requestBody.ToString(Formatting.None));
+                using (var requestStream = await request.GetRequestStreamAsync())
+                    await requestStream.WriteAsync(bytes, 0, bytes.Length, ct);
+
+                try
+                {
+                    return (HttpWebResponse)await request.GetResponseAsync();
+                }
+                catch (WebException ex) when (ex.Response is HttpWebResponse errorResponse)
+                {
+                    using (errorResponse)
+                    using (var errorStream = errorResponse.GetResponseStream())
+                    using (var reader = new StreamReader(errorStream ?? Stream.Null))
+                    {
+                        string error = await reader.ReadToEndAsync();
+                        throw new InvalidOperationException($"OpenAI API {(int)errorResponse.StatusCode}: {error}", ex);
+                    }
+                }
+            }
+        }
+
+        private void AddCustomHeaders(HttpWebRequest request)
         {
             if (_customHeaders == null) return;
             foreach (var header in _customHeaders)
             {
-                request.Headers.Add(header.Key, header.Value);
+                request.Headers[header.Key] = header.Value;
             }
         }
     }

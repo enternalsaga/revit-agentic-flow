@@ -1,18 +1,15 @@
 using System;
-using System.Net.Http;
 
 namespace RevitMcpPlugin.AI;
 
 public static class LlmProviderFactory
 {
-    private static readonly HttpClient SharedHttpClient = new() { Timeout = TimeSpan.FromMinutes(5) };
-
     public static ILlmProvider Create(ProviderConfig provider, string modelId)
     {
         return provider.Protocol switch
         {
-            "anthropic" => new AnthropicProtocolAdapter(provider, modelId, SharedHttpClient),
-            "openai" => new OpenAIProtocolAdapter(provider, modelId, SharedHttpClient),
+            "anthropic" => new AnthropicProtocolAdapter(provider, modelId),
+            "openai" => new OpenAIProtocolAdapter(provider, modelId),
             _ => throw new ArgumentException($"Unknown protocol: {provider.Protocol}")
         };
     }

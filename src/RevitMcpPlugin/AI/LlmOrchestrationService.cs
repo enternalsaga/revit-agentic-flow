@@ -1,12 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net.Http;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-using RevitMcpPlugin.AI.Roslyn;
 
 namespace RevitMcpPlugin.AI;
 
@@ -14,7 +12,7 @@ namespace RevitMcpPlugin.AI;
 /// LLM Orchestration Service — provider-agnostic tool-use loop with streaming chat.
 ///
 /// Stripped from bibim's 710-line version: no code extraction,
-/// no planner, no debug recorder. Pure orchestration with Roslyn pre-validation for send_code_to_revit.
+/// no planner, no debug recorder. Pure orchestration for provider tool-use.
 /// </summary>
 public class LlmOrchestrationService
 {
@@ -256,56 +254,6 @@ public class LlmOrchestrationService
                         string toolNameValue = toolName!;
                         OnStatusUpdate?.Invoke($"Using {toolNameValue}...");
                         Debug.WriteLine($"[LlmOrchestration] rid={requestId} tool={toolNameValue}");
-
-                        // Roslyn validation for send_code_to_revit
-                        if (toolNameValue == "send_code_to_revit")
-                        {
-                            var toolArgs = JObject.Parse(toolInput);
-                            string? code = toolArgs["code"]?.ToString();
-                            if (!string.IsNullOrWhiteSpace(code))
-                            {
-                                string codeText = code!;
-                                const string revitVersion = "2024";
-
-                                var analyzer = new RoslynAnalyzerService { RevitVersion = revitVersion };
-                                var fixResult = analyzer.ApplyAutoFixes(codeText);
-                                if (fixResult.HasChanges)
-                                {
-                                    codeText = fixResult.FixedCode;
-                                    toolArgs["code"] = codeText;
-                                    toolInput = toolArgs.ToString(Newtonsoft.Json.Formatting.None);
-                                }
-
-                                var analyzerReport = analyzer.Analyze(codeText);
-                                if (analyzerReport.HasErrors)
-                                {
-                                    string validationOutput = "Static analysis failed before Revit execution:\n" +
-                                        analyzerReport.FormatSummary();
-                                    toolResults.Add(new JObject
-                                    {
-                                        ["type"] = "tool_result",
-                                        ["tool_use_id"] = toolId,
-                                        ["content"] = validationOutput
-                                    });
-                                    continue;
-                                }
-
-                                var compiler = new RoslynCompilerService();
-                                var compileResult = compiler.Compile(codeText);
-
-                                if (!compileResult.Success)
-                                {
-                                    string validationOutput = "Compilation failed before Revit execution:\n" + compileResult.ErrorSummary;
-                                    toolResults.Add(new JObject
-                                    {
-                                        ["type"] = "tool_result",
-                                        ["tool_use_id"] = toolId,
-                                        ["content"] = validationOutput
-                                    });
-                                    continue;
-                                }
-                            }
-                        }
 
                         string toolOutput;
                         try

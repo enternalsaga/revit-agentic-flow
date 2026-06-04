@@ -83,11 +83,13 @@ public class WebView2Bridge : IDisposable
     public void Dispose()
     {
         _isDisposed = true;
-        if (_webView?.CoreWebView2 != null)
+        try
         {
-            try { _webView.CoreWebView2.WebMessageReceived -= OnWebMessageReceived; }
-            catch { /* WebView2 may already be disposed */ }
+            var coreWebView = _webView?.CoreWebView2;
+            if (coreWebView != null)
+                coreWebView.WebMessageReceived -= OnWebMessageReceived;
         }
+        catch { /* WebView2 may already be disposed */ }
     }
 }
 
