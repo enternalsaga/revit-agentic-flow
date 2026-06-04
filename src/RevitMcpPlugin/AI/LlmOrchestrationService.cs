@@ -253,31 +253,45 @@ public class LlmOrchestrationService
                             continue;
                         }
 
-                        OnStatusUpdate?.Invoke($"Using {toolName}...");
-                        Debug.WriteLine($"[LlmOrchestration] rid={requestId} tool={toolName}");
+                        string toolNameValue = toolName!;
+                        OnStatusUpdate?.Invoke($"Using {toolNameValue}...");
+                        Debug.WriteLine($"[LlmOrchestration] rid={requestId} tool={toolNameValue}");
 
                         // Roslyn validation for send_code_to_revit
-                        if (toolName == "send_code_to_revit")
+                        if (toolNameValue == "send_code_to_revit")
                         {
                             var toolArgs = JObject.Parse(toolInput);
                             string? code = toolArgs["code"]?.ToString();
                             if (!string.IsNullOrWhiteSpace(code))
                             {
+                                string codeText = code!;
                                 const string revitVersion = "2024";
 
                                 var analyzer = new RoslynAnalyzerService { RevitVersion = revitVersion };
-                                var analyzerReport = analyzer.Analyze(code);
-
-                                var fixResult = analyzer.ApplyAutoFixes(code);
+                                var fixResult = analyzer.ApplyAutoFixes(codeText);
                                 if (fixResult.HasChanges)
                                 {
-                                    code = fixResult.FixedCode;
-                                    toolArgs["code"] = code;
+                                    codeText = fixResult.FixedCode;
+                                    toolArgs["code"] = codeText;
                                     toolInput = toolArgs.ToString(Newtonsoft.Json.Formatting.None);
                                 }
 
+                                var analyzerReport = analyzer.Analyze(codeText);
+                                if (analyzerReport.HasErrors)
+                                {
+                                    string validationOutput = "Static analysis failed before Revit execution:\n" +
+                                        analyzerReport.FormatSummary();
+                                    toolResults.Add(new JObject
+                                    {
+                                        ["type"] = "tool_result",
+                                        ["tool_use_id"] = toolId,
+                                        ["content"] = validationOutput
+                                    });
+                                    continue;
+                                }
+
                                 var compiler = new RoslynCompilerService();
-                                var compileResult = compiler.Compile(code);
+                                var compileResult = compiler.Compile(codeText);
 
                                 if (!compileResult.Success)
                                 {
@@ -296,7 +310,7 @@ public class LlmOrchestrationService
                         string toolOutput;
                         try
                         {
-                            toolOutput = await toolExecutor(toolName, toolInput, ct);
+                            toolOutput = await toolExecutor(toolNameValue, toolInput, ct);
                         }
                         catch (Exception ex)
                         {

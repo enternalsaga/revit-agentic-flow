@@ -539,7 +539,7 @@ namespace RevitMcpPlugin.AI
             if (!string.IsNullOrEmpty(contentDelta))
             {
                 fullText.Append(contentDelta);
-                onTextDelta?.Invoke(contentDelta);
+                onTextDelta?.Invoke(contentDelta!);
             }
 
             // Tool call delta

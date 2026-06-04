@@ -225,7 +225,7 @@ namespace RevitMcpPlugin.AI
             {
                 var payload = JObject.Parse(data);
                 string? type = payload["type"]?.ToString();
-                string effectiveType = !string.IsNullOrWhiteSpace(type) ? type : (eventName ?? "");
+                string effectiveType = !string.IsNullOrWhiteSpace(type) ? type! : (eventName ?? "");
                 switch (effectiveType)
                 {
                     case "content_block_delta":
@@ -236,7 +236,7 @@ namespace RevitMcpPlugin.AI
                             if (!string.IsNullOrEmpty(deltaText))
                             {
                                 fullText.Append(deltaText);
-                                onTextDelta?.Invoke(deltaText);
+                                onTextDelta?.Invoke(deltaText!);
                             }
                         }
                         break;

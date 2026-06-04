@@ -17,14 +17,37 @@ public class ToolDefinitionBuilder
             {
                 ["name"] = cmd["commandName"],
                 ["description"] = cmd["description"],
-                ["input_schema"] = new JObject
-                {
-                    ["type"] = "object",
-                    ["properties"] = new JObject(),
-                    ["additionalProperties"] = true
-                }
+                ["input_schema"] = BuildInputSchema(cmd["commandName"]?.ToString() ?? string.Empty)
             });
         }
         return tools;
+    }
+
+    private static JObject BuildInputSchema(string commandName)
+    {
+        if (string.Equals(commandName, "search_revit_api", StringComparison.Ordinal))
+        {
+            return new JObject
+            {
+                ["type"] = "object",
+                ["properties"] = new JObject
+                {
+                    ["query"] = new JObject
+                    {
+                        ["type"] = "string",
+                        ["description"] = "Revit API class, member, or keyword search query."
+                    }
+                },
+                ["required"] = new JArray("query"),
+                ["additionalProperties"] = false
+            };
+        }
+
+        return new JObject
+        {
+            ["type"] = "object",
+            ["properties"] = new JObject(),
+            ["additionalProperties"] = true
+        };
     }
 }
