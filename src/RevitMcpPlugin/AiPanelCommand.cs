@@ -13,6 +13,8 @@ public class AiPanelCommand : IExternalCommand
     {
         try
         {
+            App.InitService(commandData.Application);
+
             var pane = commandData.Application.GetDockablePane(AiPanelProvider.PanelId);
             if (pane == null)
             {

@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -12,6 +11,7 @@ using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using RevitMcpPlugin.Configuration;
 using RevitMcpPlugin.Core;
 
 namespace RevitMcpPlugin.AI;
@@ -140,18 +140,22 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
                 Post("status_update", "Thinking...");
 
                 var messages = LlmOrchestrationService.BuildMessagesArray(_chatHistory);
-                string commandJsonPath = FindCommandJsonPath();
-                JArray? toolDefinitions = null;
+                var commandJsonPaths = FindCommandJsonPaths();
+                var toolDefinitions = new JArray();
                 Func<string, string, CancellationToken, Task<string>>? toolExecutor = null;
 
-                if (!string.IsNullOrEmpty(commandJsonPath) && File.Exists(commandJsonPath))
+                if (commandJsonPaths.Count > 0)
                 {
                     var builder = new ToolDefinitionBuilder();
-                    toolDefinitions = builder.BuildFromCommandJson(commandJsonPath);
+                    foreach (var commandJsonPath in commandJsonPaths)
+                    {
+                        foreach (var tool in builder.BuildFromCommandJson(commandJsonPath))
+                            toolDefinitions.Add(tool);
+                    }
                 }
 
                 var executor = GetCommandExecutor();
-                if (toolDefinitions != null && toolDefinitions.Count > 0 && executor != null)
+                if (toolDefinitions.Count > 0 && executor != null)
                 {
                     toolExecutor = (toolName, toolInput, ct) =>
                     {
@@ -167,7 +171,7 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
                 }
 
                 LlmResponse response;
-                if (toolExecutor != null && toolDefinitions != null)
+                if (toolExecutor != null && toolDefinitions.Count > 0)
                 {
                     response = await _llmService.GenerateWithToolsAsync(
                         messages, SystemPrompt, toolDefinitions,
@@ -268,10 +272,24 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
         catch { /* bridge not ready */ }
     }
 
-    private static string FindCommandJsonPath()
+    private static List<string> FindCommandJsonPaths()
     {
-        string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
-        return Path.Combine(assemblyDir, "command.json");
+        var result = new List<string>();
+        string commandsDir = PathManager.GetCommandsDirectoryPath();
+        if (!Directory.Exists(commandsDir))
+            return result;
+
+        foreach (var dir in Directory.GetDirectories(commandsDir))
+        {
+            if (Path.GetFileName(dir).StartsWith(".", StringComparison.Ordinal))
+                continue;
+
+            string commandJsonPath = Path.Combine(dir, "command.json");
+            if (File.Exists(commandJsonPath))
+                result.Add(commandJsonPath);
+        }
+
+        return result;
     }
 
     public void Dispose()

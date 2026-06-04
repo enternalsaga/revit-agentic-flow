@@ -24,6 +24,18 @@ function Invoke-DotNet {
     }
 }
 
+function Invoke-Npm {
+    param(
+        [Parameter(ValueFromRemainingArguments = $true)]
+        [string[]]$NpmArgs
+    )
+
+    & npm @NpmArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "npm $($NpmArgs -join ' ') failed with exit code $LASTEXITCODE"
+    }
+}
+
 function Test-FileLocked {
     param(
         [Parameter(Mandatory = $true)]
@@ -79,6 +91,13 @@ Neu chi sua RevitMcpServer thi khong can restart Revit. Nhung cac DLL add-in da 
 }
 
 if (-not $SkipBuild) {
+    $frontendDir = Join-Path $repoRoot "src\RevitMcpPlugin\frontend"
+    Invoke-Npm ci --prefix $frontendDir
+    Invoke-Npm run build --prefix $frontendDir
+    if (-not (Test-Path (Join-Path $repoRoot "src\RevitMcpPlugin\wwwroot\index.html"))) {
+        throw "AI Chat frontend build did not produce src\RevitMcpPlugin\wwwroot\index.html"
+    }
+
     Invoke-DotNet build (Join-Path $repoRoot "src\RevitMcpPlugin\RevitMcpPlugin.csproj") -c Release -f $targetFramework
     Invoke-DotNet build (Join-Path $repoRoot "src\RevitMcpCommandSet\RevitMCPCommandSet.csproj") -c $commandConfig
 }

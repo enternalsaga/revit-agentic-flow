@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AiSettings } from '../types';
 
 interface Props {
@@ -22,6 +22,12 @@ export default function SettingsPanel({ settings, onSave }: Props) {
       providers: {},
     }
   );
+
+  useEffect(() => {
+    if (settings) {
+      setLocalSettings(settings);
+    }
+  }, [settings]);
 
   const updateApiKey = (providerId: string, key: string) => {
     setLocalSettings(prev => ({
