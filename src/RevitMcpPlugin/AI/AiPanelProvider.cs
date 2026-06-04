@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -15,6 +16,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RevitMcpPlugin.Configuration;
 using RevitMcpPlugin.Core;
+using RevitMcpSdk.Rag;
 
 namespace RevitMcpPlugin.AI;
 
@@ -210,6 +212,21 @@ pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius:
                     return;
                 }
 
+                // RAG auto-injection
+                string requestSystemPrompt = SystemPrompt;
+                try
+                {
+                    var ragResult = await LocalRevitRagService.FetchAsync(text, "2024");
+                    if (ragResult.HasContext)
+                    {
+                        requestSystemPrompt += $"\n\n## Relevant Revit API Documentation\n{ragResult.ContextText}";
+                    }
+                }
+                catch (Exception ragEx)
+                {
+                    Debug.WriteLine($"[AiPanelProvider] RAG lookup skipped: {ragEx.Message}");
+                }
+
                 _llmService.OnStreamingDelta -= OnStreamingDelta;
                 _llmService.OnStreamingDelta += OnStreamingDelta;
                 _llmService.OnStatusUpdate -= OnStatusUpdate;
@@ -217,7 +234,29 @@ pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius:
 
                 Post("status_update", "Thinking...");
 
-                var messages = LlmOrchestrationService.BuildMessagesArray(_chatHistory);
+                // History sliding window
+                const int SlidingWindowSize = 10;
+                List<(string role, string text)> historyForRequest;
+                lock (_chatHistoryLock)
+                {
+                    if (_chatHistory.Count > SlidingWindowSize)
+                    {
+                        var dropped = _chatHistory.Take(_chatHistory.Count - SlidingWindowSize).ToList();
+                        var summary = HistorySummariser.Summarise(dropped);
+
+                        historyForRequest = new List<(string role, string text)>
+                        {
+                            ("user", summary)
+                        };
+                        historyForRequest.AddRange(_chatHistory.Skip(_chatHistory.Count - SlidingWindowSize));
+                    }
+                    else
+                    {
+                        historyForRequest = _chatHistory.ToList();
+                    }
+                }
+
+                var messages = LlmOrchestrationService.BuildMessagesArray(historyForRequest);
                 var commandJsonPaths = FindCommandJsonPaths();
                 var toolDefinitions = new JArray();
                 Func<string, string, CancellationToken, Task<string>>? toolExecutor = null;
@@ -252,13 +291,13 @@ pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius:
                 if (toolExecutor != null && toolDefinitions.Count > 0)
                 {
                     response = await _llmService.GenerateWithToolsAsync(
-                        messages, SystemPrompt, toolDefinitions,
+                        messages, requestSystemPrompt, toolDefinitions,
                         toolExecutor, ct: _streamingCts.Token);
                 }
                 else
                 {
                     response = await _llmService.SendMessageAsync(
-                        messages, SystemPrompt, ct: _streamingCts.Token);
+                        messages, requestSystemPrompt, ct: _streamingCts.Token);
                 }
 
                 string responseText = response.Success
