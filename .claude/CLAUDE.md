@@ -162,6 +162,17 @@ Minimum modeling checks:
 - `RevitMcpServer` publish is intentionally untrimmed because MCP tool discovery and plugin command loading use reflection.
 - Harness runtime output (`.revit-harness/runs/`, `cache/`, `lesson-candidates/`, `command-gaps/`, `command-proposals/`, `command-scaffolds/`) is gitignored.
 
+## Linked Directories (Plugin Deployment Targets)
+
+The following external directory is **part of this project** — it is the deployment target where the Revit plugin binaries are installed:
+
+- **Revit 2024 Addins**: `%USERPROFILE%\AppData\Roaming\Autodesk\Revit\Addins\2024`
+  - Contains `revit-mcp.addin` manifest and the `revit-mcp/` folder with deployed plugin DLLs.
+  - Also contains `RevitMCPCommandSet/` with the deployed command set binaries.
+  - Files here are produced by `deploy-phase1.ps1` from this repo's build output.
+
+When this path appears as a separate workspace, treat it as a **deployment artifact** of this project, not an independent codebase. Do not create new source files there — only deploy built binaries via the existing scripts.
+
 ## C# Coding Pitfalls
 
 - **Namespace conflicts**: `ProjectInfo`, `Wall`, etc. can clash with `Autodesk.Revit.DB.*`. Use fully qualified names or rename custom classes.

@@ -41,7 +41,7 @@ namespace RevitMcpPlugin.AI
             _modelId = modelId;
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _customHeaders = config.Headers;
-            _isGeminiAuth = config.BaseUrl?.Contains("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) == true;
+            _isGeminiAuth = config.BaseUrl?.IndexOf("generativelanguage.googleapis.com", StringComparison.OrdinalIgnoreCase) >= 0 == true;
             _endpoint = BuildEndpoint(config.BaseUrl ?? "", _isGeminiAuth ? _apiKey : null);
         }
 

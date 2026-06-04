@@ -5,7 +5,7 @@ Run this checklist before reporting a modeling task as complete.
 ## Required Checks
 
 1. Verify expected element IDs still exist with `verify_elements` when IDs were captured.
-2. Run `snapshot_workspace` with image and visible elements when a view is available.
+2. Run `snapshot_workspace` with image and visible elements when a view is available. Always pass `outputDirectory: "<PROJECT_ROOT>/.tmp/snapshots"` — never save to `.claude/` or source folders.
 3. Run `analyze_model_statistics`.
 4. Run `get_warnings`.
 5. Compare created categories and counts to the plan.

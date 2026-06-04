@@ -97,6 +97,7 @@ src/RevitHarness/evals/results/
 .revit-harness/command-scaffolds/
 /.docs
 /image
+/.tmp
 
 # =============================================================================
 # AI Chat Panel (frontend assets & node_modules)

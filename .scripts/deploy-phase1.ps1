@@ -8,6 +8,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Ensure local .dotnet SDK is on PATH and wins over Program Files runtime-only dotnet
+$localDotnet = Join-Path $env:USERPROFILE ".dotnet"
+if (Test-Path (Join-Path $localDotnet "dotnet.exe")) {
+    $env:DOTNET_ROOT = $localDotnet
+    # Remove any existing dotnet paths, then prepend local SDK
+    $pathParts = $env:PATH -split ';' | Where-Object {
+        $_ -and ($_ -ne $localDotnet) -and ($_ -notlike '*\dotnet')
+    }
+    $env:PATH = (@($localDotnet) + $pathParts) -join ';'
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $targetFramework = if ($RevitVersion -eq "2024") { "net48" } else { "net8.0-windows" }
 $commandConfig = if ($RevitVersion -eq "2024") { "Release R24" } else { "Release R25" }
@@ -30,7 +41,7 @@ function Invoke-Npm {
         [string[]]$NpmArgs
     )
 
-    & npm @NpmArgs
+    & npm.cmd @NpmArgs
     if ($LASTEXITCODE -ne 0) {
         throw "npm $($NpmArgs -join ' ') failed with exit code $LASTEXITCODE"
     }

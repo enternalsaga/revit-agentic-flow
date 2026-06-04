@@ -223,15 +223,18 @@ After all execution steps complete:
 
 ### 4a. Visual verification (MANDATORY)
 
-Call `snapshot_workspace` to capture the current state of the model:
+Call `snapshot_workspace` to capture the current state of the model. **Always** pass `outputDirectory` pointing to `.tmp/snapshots` relative to the project root — NEVER save snapshot images into `.claude/`, project source folders, or the git-tracked tree:
 
 ```
 snapshot_workspace({
   includeImage: true,
   includeVisibleElements: true,
-  pixelSize: 1920
+  pixelSize: 1920,
+  outputDirectory: "<PROJECT_ROOT>/.tmp/snapshots"
 })
 ```
+
+> Replace `<PROJECT_ROOT>` with the actual absolute path to the project root (e.g., `E:\OneDrive\Work\AI\Work\MCP_Revit\.tmp\snapshots`).
 
 Review the returned image. Check for:
 - Missing elements (compare against the plan)
@@ -299,6 +302,7 @@ At the end of the report, include a tool usage breakdown so the user can verify 
 - Grid and level creation should happen first — everything else depends on them.
 - Always verify family types exist before creating elements.
 - Take a snapshot at the end — this is MANDATORY, not optional.
+- **Snapshot images MUST go to `.tmp/snapshots/`** — never into `.claude/`, project source, or git-tracked folders. Always pass `outputDirectory` explicitly.
 - If the user provides an image/drawing, extract ALL dimensions before starting. Ask if anything is unclear.
 - Respond to the user in Vietnamese (per project rules).
 - **Do not assume tools don't exist. Try them first.**

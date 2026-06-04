@@ -2,9 +2,15 @@ using Autodesk.Revit.UI;
 using RevitMcpPlugin.AI;
 using RevitMcpPlugin.Configuration;
 using RevitMcpPlugin.Core;
+using System;
+using System.IO;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+#if NET8_0_OR_GREATER
+using System.Runtime.Loader;
+#endif
 
 namespace RevitMcpPlugin;
 
@@ -14,10 +20,17 @@ public class App : IExternalApplication
     private const string PanelName = "MCP Control";
 
     private AiPanelProvider? _aiPanelProvider;
+    private static bool _assemblyResolverInitialized;
+#if NET8_0_OR_GREATER
+    private static AssemblyDependencyResolver? _dependencyResolver;
+    private static AssemblyLoadContext? _loadContext;
+#endif
     internal static PipeService? Service { get; private set; }
 
     public Result OnStartup(UIControlledApplication application)
     {
+        InitializeAssemblyResolver();
+
         try
         {
             application.CreateRibbonTab(TabName);
@@ -63,6 +76,63 @@ public class App : IExternalApplication
         }
 
         return Result.Succeeded;
+    }
+
+    private static void InitializeAssemblyResolver()
+    {
+        if (_assemblyResolverInitialized)
+            return;
+
+        _assemblyResolverInitialized = true;
+        AppDomain.CurrentDomain.AssemblyResolve += OnAssemblyResolve;
+
+#if NET8_0_OR_GREATER
+        var entryAssembly = Assembly.GetExecutingAssembly();
+        _loadContext = AssemblyLoadContext.GetLoadContext(entryAssembly) ?? AssemblyLoadContext.Default;
+        _dependencyResolver = new AssemblyDependencyResolver(entryAssembly.Location);
+        _loadContext.Resolving += OnLoadContextResolving;
+#endif
+    }
+
+    private static Assembly? OnAssemblyResolve(object? sender, ResolveEventArgs args)
+        => TryResolveAssembly(new AssemblyName(args.Name), preferLoadContext: false);
+
+#if NET8_0_OR_GREATER
+    private static Assembly? OnLoadContextResolving(AssemblyLoadContext context, AssemblyName assemblyName)
+        => TryResolveAssembly(assemblyName, preferLoadContext: true);
+#endif
+
+    private static Assembly? TryResolveAssembly(AssemblyName assemblyName, bool preferLoadContext)
+    {
+        if (string.IsNullOrWhiteSpace(assemblyName.Name) ||
+            assemblyName.Name.EndsWith(".resources", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        string? resolvedPath = ResolveManagedAssemblyPath(assemblyName);
+        if (string.IsNullOrWhiteSpace(resolvedPath) || !File.Exists(resolvedPath))
+            return null;
+
+#if NET8_0_OR_GREATER
+        if (preferLoadContext && _loadContext != null)
+            return _loadContext.LoadFromAssemblyPath(resolvedPath);
+#endif
+
+        return Assembly.LoadFrom(resolvedPath);
+    }
+
+    private static string? ResolveManagedAssemblyPath(AssemblyName assemblyName)
+    {
+#if NET8_0_OR_GREATER
+        string? depsPath = _dependencyResolver?.ResolveAssemblyToPath(assemblyName);
+        if (!string.IsNullOrWhiteSpace(depsPath) && File.Exists(depsPath))
+            return depsPath;
+#endif
+
+        string addinDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? AppContext.BaseDirectory;
+        string localDll = Path.Combine(addinDir, assemblyName.Name + ".dll");
+        return File.Exists(localDll) ? localDll : null;
     }
 
     public Result OnShutdown(UIControlledApplication application)

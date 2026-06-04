@@ -2,10 +2,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Autodesk.Revit.UI;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.Wpf;
@@ -68,6 +70,8 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
                 "RevitMCP", "WebView2");
             var env = await CoreWebView2Environment.CreateAsync(null, userDataFolder);
             await _webView.EnsureCoreWebView2Async(env);
+            _webView.CoreWebView2.NavigationCompleted += OnNavigationCompleted;
+            _webView.CoreWebView2.ProcessFailed += OnProcessFailed;
 
             _bridge = new WebView2Bridge(_webView);
             _bridge.Initialize();
@@ -77,20 +81,23 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
 
             string assemblyDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) ?? "";
             string wwwrootDir = Path.Combine(assemblyDir, "wwwroot");
+            string indexPath = Path.Combine(wwwrootDir, "index.html");
 
-            if (Directory.Exists(wwwrootDir))
+            if (File.Exists(indexPath))
             {
                 _webView.CoreWebView2.SetVirtualHostNameToFolderMapping(
                     "revit-mcp.local", wwwrootDir,
                     CoreWebView2HostResourceAccessKind.Allow);
+                if (string.Equals(Environment.GetEnvironmentVariable("REVIT_MCP_AI_DEBUG_WEBVIEW"), "1", StringComparison.Ordinal))
+                    _webView.CoreWebView2.OpenDevToolsWindow();
                 _webView.CoreWebView2.Navigate("https://revit-mcp.local/index.html");
             }
             else
             {
-                _webView.CoreWebView2.NavigateToString(
-                    "<html><body style='font-family:Segoe UI;padding:20px'>" +
-                    "<h2>AI Chat frontend not built.</h2>" +
-                    "<p>Run: <code>cd frontend &amp;&amp; npm run build</code></p></body></html>");
+                _webView.CoreWebView2.NavigateToString(BuildDiagnosticHtml(
+                    "AI Chat frontend not found",
+                    $"Expected index.html at: {indexPath}",
+                    "Run .\\.scripts\\deploy-phase1.ps1 for the Revit version you are launching."));
             }
 
             _initialized = true;
@@ -98,7 +105,78 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
         catch (Exception ex)
         {
             Debug.WriteLine($"[AiPanelProvider] Init failed: {ex.Message}");
+            ShowDiagnosticText(
+                "WebView2 initialization failed",
+                ex.Message,
+                "Ensure Microsoft Edge WebView2 Runtime is installed, then restart Revit.");
         }
+    }
+
+    private void OnNavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
+    {
+        if (e.IsSuccess) return;
+
+        string message = $"WebView2 navigation failed: {e.WebErrorStatus}";
+        Debug.WriteLine($"[AiPanelProvider] {message}");
+        _webView?.CoreWebView2.NavigateToString(BuildDiagnosticHtml(
+            "AI Chat page failed to load",
+            message,
+            "Check that wwwroot/index.html and wwwroot/assets are deployed next to RevitMcpPlugin.dll."));
+    }
+
+    private void OnProcessFailed(object? sender, CoreWebView2ProcessFailedEventArgs e)
+    {
+        string message = $"WebView2 process failed: {e.ProcessFailedKind}";
+        Debug.WriteLine($"[AiPanelProvider] {message}");
+        ShowDiagnosticText("AI Chat WebView crashed", message, "Restart Revit and reopen the AI Chat panel.");
+    }
+
+    private void ShowDiagnosticText(string title, string detail, string action)
+    {
+        if (_hostGrid == null) return;
+
+        void Update()
+        {
+            _hostGrid.Children.Clear();
+            _hostGrid.Background = new SolidColorBrush(Color.FromRgb(15, 17, 23));
+            _hostGrid.Children.Add(new TextBlock
+            {
+                Text = $"{title}\n\n{detail}\n\n{action}",
+                Foreground = new SolidColorBrush(Color.FromRgb(228, 228, 231)),
+                TextWrapping = TextWrapping.Wrap,
+                Margin = new Thickness(16),
+                VerticalAlignment = VerticalAlignment.Center
+            });
+        }
+
+        if (_hostGrid.Dispatcher.CheckAccess()) Update();
+        else _hostGrid.Dispatcher.Invoke(Update);
+    }
+
+    private static string BuildDiagnosticHtml(string title, string detail, string action)
+    {
+        string safeTitle = System.Net.WebUtility.HtmlEncode(title);
+        string safeDetail = System.Net.WebUtility.HtmlEncode(detail);
+        string safeAction = System.Net.WebUtility.HtmlEncode(action);
+        return $@"<!doctype html>
+<html>
+<head>
+<meta charset='utf-8'>
+<style>
+body {{ margin: 0; background: #0f1117; color: #e4e4e7; font-family: Segoe UI, sans-serif; }}
+main {{ padding: 16px; line-height: 1.5; }}
+h2 {{ font-size: 16px; margin: 0 0 12px; }}
+pre {{ white-space: pre-wrap; background: #1a1b26; padding: 12px; border-radius: 4px; }}
+</style>
+</head>
+<body>
+<main>
+<h2>{safeTitle}</h2>
+<pre>{safeDetail}</pre>
+<p>{safeAction}</p>
+</main>
+</body>
+</html>";
     }
 
     private void RegisterBridgeHandlers()
@@ -296,6 +374,15 @@ public class AiPanelProvider : IDockablePaneProvider, IDisposable
     {
         _streamingCts?.Cancel();
         _streamingCts?.Dispose();
+        if (_webView?.CoreWebView2 != null)
+        {
+            try
+            {
+                _webView.CoreWebView2.NavigationCompleted -= OnNavigationCompleted;
+                _webView.CoreWebView2.ProcessFailed -= OnProcessFailed;
+            }
+            catch { /* WebView2 may already be disposed */ }
+        }
         _bridge?.Dispose();
         _webView?.Dispose();
     }
